@@ -5,6 +5,7 @@ import java.util.logging.Logger;
 import pb.Endpoint;
 import pb.EndpointUnavailable;
 import pb.Manager;
+import pb.Utils;
 import pb.protocols.Message;
 import pb.protocols.Protocol;
 import pb.protocols.IRequestReplyProtocol;
@@ -47,6 +48,7 @@ public class SessionProtocol extends Protocol implements IRequestReplyProtocol {
 	 */
 	private volatile boolean protocolRunning=false;
 	
+	private boolean isReceivedReply = false;
 	/**
 	 * Initialise the protocol with an endpoint and manager.
 	 * @param endpoint
@@ -112,6 +114,12 @@ public class SessionProtocol extends Protocol implements IRequestReplyProtocol {
 	@Override
 	public void sendRequest(Message msg) throws EndpointUnavailable {
 		endpoint.send(msg);
+		int maxWaitTime = 20000;
+		Utils.getInstance().setTimeout(()->{
+			if(!isReceivedReply){
+				manager.endpointTimedOut(endpoint,this);
+			}
+		},maxWaitTime);
 	}
 
 	/**
@@ -123,6 +131,7 @@ public class SessionProtocol extends Protocol implements IRequestReplyProtocol {
 	 */
 	@Override
 	public void receiveReply(Message msg) {
+		isReceivedReply = true;
 		if(msg instanceof SessionStartReply) {
 			if(protocolRunning){
 				// error, received a second reply?
