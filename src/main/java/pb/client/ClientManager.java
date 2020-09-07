@@ -32,36 +32,83 @@ public class ClientManager extends Manager {
 	private SessionProtocol sessionProtocol;
 	private KeepAliveProtocol keepAliveProtocol;
 	private Socket socket;
+	private int retryCountMax=10;
+	private long numMillisecondsToSleep =5000;
+	private String host;
+	private int port;
 	
 	public ClientManager(String host,int port) throws UnknownHostException, IOException {
+		this.port=port;
+		this.host=host;
+		int count=1;
+		while (socket ==null && count<retryCountMax+1) {
+			try {
+				log.info("number of attemps: "+count);
+				socket=new Socket(InetAddress.getByName(host),port);
+			}catch(Exception e){
+				try {
+					Thread.sleep(numMillisecondsToSleep);
+				}catch(InterruptedException interruptedexpection){
+					interruptedexpection.printStackTrace();
+				}
+				log.severe("well...still can't connect!");
+				count++;
+			}
+		}
+		if (socket==null) {
+			log.severe("Give up...");
+			System.exit(-1);
+		}
 		
-		socket=new Socket(InetAddress.getByName(host),port);
 		Endpoint endpoint = new Endpoint(socket,this);
 		endpoint.start();
-		
-		// simulate the client shutting down after 2mins
-		// this will be removed when the client actually does something
-		// controlled by the user
-		Utils.getInstance().setTimeout(()->{
-			try {
-				sessionProtocol.stopSession();
-			} catch (EndpointUnavailable e) {
-				//ignore...
-			}
-		}, 120000);
-		
-		
 		try {
 			// just wait for this thread to terminate
 			endpoint.join();
 		} catch (InterruptedException e) {
 			// just make sure the ioThread is going to terminate
 			endpoint.close();
-		}
-		
-		Utils.getInstance().cleanUp();
+		}	
 	}
 	
+	/** 
+	 * When disconnection from server happened,
+	 * this method will be called to retry connection
+	 * for 10 times per 5 seconds before giving up.
+	 */
+	private void retryConnect() {
+		int count=0;
+		while (count<retryCountMax+1) {
+			try {
+				if(count!=0) {
+					log.info("number of attemps: "+count);
+					}
+				socket=new Socket(InetAddress.getByName(host),port);
+				Endpoint endpoint1 = new Endpoint(socket,this);
+				endpoint1.start();
+				try {
+					endpoint1.join();
+				} catch (Exception exception) {
+					//exception.printStackTrace();
+					endpoint1.close();
+				}
+			}catch(IOException ioexpection){
+				try {
+					Thread.sleep(numMillisecondsToSleep);
+				}catch(InterruptedException interruptedexpection){
+					//interruptedexpection.printStackTrace();
+				}
+				if(count!=0) {
+					log.severe("well...still can't connect");
+					}
+				count++;
+			}
+		}
+		log.severe("Give up...");
+		System.exit(-1);
+		}
+	
+
 	/**
 	 * The endpoint is ready to use.
 	 * @param endpoint
@@ -101,18 +148,20 @@ public class ClientManager extends Manager {
 	 */
 	public void endpointClosed(Endpoint endpoint) {
 		log.info("connection with server terminated");
-	}
+		}
 	
 	/**
-	 * The endpoint has abruptly disconnected. It can no longer
-	 * send or receive data.
+	 * The endpoint has abruptly disconnected. It will call
+	 * retryConnect() to try to reconnect.
 	 * @param endpoint
 	 */
 	@Override
 	public void endpointDisconnectedAbruptly(Endpoint endpoint) {
 		log.severe("connection with server terminated abruptly");
 		endpoint.close();
-	}
+		retryConnect();
+		}
+	
 
 	/**
 	 * An invalid message was received over the endpoint.
