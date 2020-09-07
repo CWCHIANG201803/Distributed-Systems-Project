@@ -5,6 +5,7 @@ import java.util.logging.Logger;
 import pb.Endpoint;
 import pb.EndpointUnavailable;
 import pb.Manager;
+import pb.Utils;
 import pb.protocols.Message;
 import pb.protocols.Protocol;
 import pb.protocols.IRequestReplyProtocol;
@@ -47,6 +48,9 @@ public class SessionProtocol extends Protocol implements IRequestReplyProtocol {
 	 */
 	private volatile boolean protocolRunning=false;
 	
+	private final int maxWaitTime = 20000;
+	private boolean isReceivedReplyFromServer = false;
+	private boolean isReceivedRequestFromClient = false;
 	/**
 	 * Initialise the protocol with an endpoint and manager.
 	 * @param endpoint
@@ -87,6 +91,11 @@ public class SessionProtocol extends Protocol implements IRequestReplyProtocol {
 	public void startAsClient() throws EndpointUnavailable {
 		//  send the server a start session request
 		sendRequest(new SessionStartRequest());
+		Utils.getInstance().setTimeout(()->{
+			if(!isReceivedReplyFromServer){
+				manager.endpointTimedOut(endpoint,this);
+			}
+		},maxWaitTime);
 	}
 
 	/**
@@ -94,7 +103,11 @@ public class SessionProtocol extends Protocol implements IRequestReplyProtocol {
 	 */
 	@Override
 	public void startAsServer() {
-		// nothing to do really
+		Utils.getInstance().setTimeout(()->{
+			if(!isReceivedRequestFromClient){
+				manager.endpointTimedOut(endpoint,this);
+			}
+		},maxWaitTime);
 	}
 	
 	/**
@@ -123,6 +136,7 @@ public class SessionProtocol extends Protocol implements IRequestReplyProtocol {
 	 */
 	@Override
 	public void receiveReply(Message msg) {
+		isReceivedReplyFromServer = true;
 		if(msg instanceof SessionStartReply) {
 			if(protocolRunning){
 				// error, received a second reply?
@@ -151,6 +165,7 @@ public class SessionProtocol extends Protocol implements IRequestReplyProtocol {
 	 */
 	@Override
 	public void receiveRequest(Message msg) throws EndpointUnavailable {
+		isReceivedRequestFromClient = true;
 		if(msg instanceof SessionStartRequest) {
 			if(protocolRunning) {
 				// error, received a second request?
