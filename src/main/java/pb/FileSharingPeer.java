@@ -296,6 +296,12 @@ public class FileSharingPeer {
 		 * any errors and just return in this case. Otherwise you have a clientManager
 		 * that has connected.
 		 */
+        try {
+            clientManager = peerManager.connect(Integer.parseInt(parts[1]), parts[0]);
+        }
+        catch(UnknownHostException u) {
+            return;
+        }
 
 		try {
 			OutputStream out = new FileOutputStream(parts[2]);
@@ -308,6 +314,16 @@ public class FileSharingPeer {
 			 * connection. Remember to emit a getFile event to request the file form the
 			 * peer. Print out something informative for the events that occur.
 			 */
+
+             clientManager.on(PeerManager.peerStarted, (args)->{
+                Endpoint endpoint = (Endpoint)args[0];
+                
+                endpoint.emit(getFile, parts[2], endpoint);
+             }).on(PeerManager.peerStopped, (args)->{
+                
+             }).on(PeerManager.peerError, (args)->{
+                
+             });
 
 			clientManager.start();
 			/*
@@ -336,9 +352,23 @@ public class FileSharingPeer {
         clientManager.on(PeerManager.peerStarted, (args)->{
             log.info("peerStarted");
             Endpoint endpoint = (Endpoint)args[0];
-            endpoint.emit(IndexServer.queryIndex, "testing for query file name");
+
+            //query the filenames from index server
+            endpoint.emit(IndexServer.queryIndex, query);
+
+            //listen for queryResponse from index server
             endpoint.on(IndexServer.queryResponse, (hit)->{
-                log.info((String)hit[0]);
+                try {
+                    if(!((String)hit[0]).equals("")) getFileFromPeer(peerManager, (String)hit[0]);
+                }
+                catch(InterruptedException i) {
+                    //do nothing
+                }
+            });
+
+            //listen for queryError from nowhere
+            endpoint.on(IndexServer.queryError, (none)->{
+                
             });
         }).on(PeerManager.peerStopped, (args)->{
             log.info("peerStopped");
