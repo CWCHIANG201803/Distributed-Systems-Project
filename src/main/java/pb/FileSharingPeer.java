@@ -285,7 +285,18 @@ public class FileSharingPeer {
 		// connect to the index server and tell it the files we are sharing
 		PeerManager peerManager = new PeerManager(peerPort);
 		ClientManager clientManager = peerManager.connect(indexServerPort, host);
-
+        clientManager.on(PeerManager.peerStarted, (args)->{
+            log.info("peerStarted");
+            Endpoint endpoint = (Endpoint)args[0];
+            endpoint.emit(IndexServer.queryIndex, "testing for query file name");
+            endpoint.on(IndexServer.queryResponse, (hit)->{
+                log.info((String)hit[0]);
+            });
+        }).on(PeerManager.peerStopped, (args)->{
+            log.info("peerStopped");
+        }).on(PeerManager.peerError, (args)->{
+            log.info("peerError");
+        });
 		/*
 		 * TODO for project 2B. Listen for peerStarted, peerStopped and peerError events
 		 * on the clientManager. Listen for queryResponse and queryError events on the
