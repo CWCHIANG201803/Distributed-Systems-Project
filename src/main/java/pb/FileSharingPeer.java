@@ -236,13 +236,15 @@ public class FileSharingPeer {
 		 * peerServerManager is ready and when the ioThread event has been received.
 		 * Print out something informative for the events when they occur.
 		 */
+
 		peerManager
 				.on(PeerManager.peerStarted,(args) -> {
+					log.info("catch event from the local emit-peerStarted");
 					Endpoint endpoint = (Endpoint) args[0];
-					endpoint.on(IndexServer.queryIndex,(EventArgs)->{
-						for(var filename : filenames){
-							startTransmittingFile(filename, endpoint);
-						}
+					endpoint.on(getFile, (EventArgs)->{
+						log.info("get file events is triggered..");
+						String filename = (String)EventArgs[0];
+						startTransmittingFile(filename, endpoint);
 					});
 				})
 				.on(PeerManager.peerServerManager, (args)->{
