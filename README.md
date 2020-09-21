@@ -20,7 +20,7 @@ The following lists the step to run the system.
 		For example, a query peer queries the file prefixing "file" and postfix "jar":
 		Followed by (a), this client peer will receive file1.txt, file2.txt, and test.jar from the sharing peer.
 
-		java -cp target/pb2b-0.0.1-SNAPSHOT-jar-with-dependencies.jar -port 3300 -query file jar
+		java -cp target/pb2b-0.0.1-SNAPSHOT-jar-with-dependencies.jar pb.FileSharingPeer -port 3300 -query file jar
 
 		How to work?
 		First, this peer will come to index server to ask the source and file, then the index server will provide the peer sharing the file. If there is nothing wrong, second, this peer will disconnect with index server and turn to get the file from the peer provided by the index server. Once tranmission is finished, this peer will also be terminated.
