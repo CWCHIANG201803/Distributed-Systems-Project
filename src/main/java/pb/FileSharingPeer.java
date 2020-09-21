@@ -193,6 +193,23 @@ public class FileSharingPeer {
 		 * informative for the events when they they occur.
 		 */
 
+		clientManager
+				.on(PeerManager.peerStarted,(args)->{
+					Endpoint endpoint = (Endpoint) args[0];
+					endpoint.on(IndexServer.indexUpdateError,(EventArgs)->{
+								System.out.println("oh..there is an error while updating index..");
+							});
+
+					emitIndexUpdate(peerport, filenames, endpoint, clientManager);
+
+				})
+				.on(IndexServer.peerUpdate,(args)->{
+					String update = (String) args[0];
+				})
+				.on(PeerManager.peerStopped,(args)->{
+
+				});
+
 		clientManager.start();
 	}
 
@@ -219,6 +236,37 @@ public class FileSharingPeer {
 		 * peerServerManager is ready and when the ioThread event has been received.
 		 * Print out something informative for the events when they occur.
 		 */
+		peerManager
+				.on(PeerManager.peerStarted,(args) -> {
+					Endpoint endpoint = (Endpoint) args[0];
+					endpoint.on(IndexServer.queryIndex,(EventArgs)->{
+						for(var filename : filenames){
+							startTransmittingFile(filename, endpoint);
+						}
+					});
+				})
+				.on(PeerManager.peerServerManager, (args)->{
+					log.info("catch event from the local emit-peerServerManager");
+					ServerManager serverManager = (ServerManager)args[0];
+					serverManager.on(IOThread.ioThread, (EventArgs)->{
+						String peerPort = (String)EventArgs[0];
+						try {
+							uploadFileList(filenames, peerManager, peerPort);
+						} catch (UnknownHostException e) {
+							log.severe("The host is unknown..");
+						} catch (InterruptedException e) {
+							log.severe("The process has been interrupted");
+						}
+					});
+				})
+				.on(PeerManager.peerError, (args)->{
+					log.info("catch event from the local emit-peerError");
+				})
+				.on(PeerManager.peerStopped, (arg)->{
+					log.info("catch event from the local emit-peerStopped");
+					ServerManager serverManager = (ServerManager)arg[0];
+					log.info(serverManager.getName());
+				});
 
 		peerManager.start();
 
