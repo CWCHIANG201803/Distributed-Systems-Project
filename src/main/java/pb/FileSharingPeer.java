@@ -328,28 +328,32 @@ public class FileSharingPeer {
                     if(((String)contents[0]).equals("")) {
                         ClientManager peer = (ClientManager)args[1];
                         peer.shutdown();
-                    }
-                    try {
-                        byte b[] = Base64.decodeBase64((String)contents[0]);
-                        out.write(b);
-                        out.flush();
-                    }
-                    catch(IOException i) {
-                        
-                    }
-                    finally {
                         try {
+                            out.flush();
                             if(out != null) out.close();
                         }
                         catch(IOException i) {
 
                         }
                     }
+                    try {
+                        byte b[] = Base64.decodeBase64((String)contents[0]);
+                        out.write(b);
+                        //out.flush();
+                    }
+                    catch(IOException i) {
+                        
+                    }
+                    /*finally {
+                        try {
+                            if(out != null) out.close();
+                        }
+                        catch(IOException i) {
+
+                        }
+                    }*/
                 });
              }).on(PeerManager.peerStopped, (args)->{
-                //ClientManager peer = (ClientManager)args[1];
-                //peer.shutdown();
-                //System.out.println("in peerStopped");
              }).on(PeerManager.peerError, (args)->{
                 //clientManager.shutdown();
              });
