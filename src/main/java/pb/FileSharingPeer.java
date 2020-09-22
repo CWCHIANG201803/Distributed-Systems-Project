@@ -325,7 +325,10 @@ public class FileSharingPeer {
                     + parts[0] + ":" + parts[1]);
 
                 endpoint.on(fileContents, (contents)->{
-                    //if(((String)contents[0]).equals("")) clientManager.emit(ClientManager.sessionStopped);
+                    if(((String)contents[0]).equals("")) {
+                        ClientManager peer = (ClientManager)args[1];
+                        peer.shutdown();
+                    }
                     try {
                         byte b[] = Base64.decodeBase64((String)contents[0]);
                         out.write(b);
@@ -344,9 +347,9 @@ public class FileSharingPeer {
                     }
                 });
              }).on(PeerManager.peerStopped, (args)->{
-                //ClientManager manager = (ClientManager)args[1];
-                //manager.shutdown();
-                System.out.println("in peerStopped");
+                //ClientManager peer = (ClientManager)args[1];
+                //peer.shutdown();
+                //System.out.println("in peerStopped");
              }).on(PeerManager.peerError, (args)->{
                 //clientManager.shutdown();
              });
@@ -388,18 +391,16 @@ public class FileSharingPeer {
 
             //listen for queryResponse from index server
             endpoint.on(IndexServer.queryResponse, (hit)->{
-                if(!((String)hit[0]).equals("")) {
-                    System.out.println("Received query response: "+ (String)hit[0]);
-                }
-                else {
-                    System.out.println("Received all responses.");
-                    
-                    //trying to stop the connection:(
-                    //clientManager.emit(PeerManager.peerStopped, "");       
-                    //endpoint.emit(ServerManager.sessionStopped, endpoint);
-                }
                 try {
-                    if(!((String)hit[0]).equals("")) getFileFromPeer(peerManager, (String)hit[0]);
+                    if(!((String)hit[0]).equals("")) {
+                        System.out.println("Received query response: "+ (String)hit[0]);
+                        getFileFromPeer(peerManager, (String)hit[0]);
+                    }
+                    else {
+                        System.out.println("Received all responses.");
+                        ClientManager server = (ClientManager)args[1];
+                        server.shutdown();
+                    }
                 }
                 catch(InterruptedException i) {
                     //do nothing
@@ -411,7 +412,7 @@ public class FileSharingPeer {
                 
             });
         }).on(PeerManager.peerStopped, (args)->{
-            log.info("peerStopped");
+            System.out.println("Disconnected from the index sever: " );
         }).on(PeerManager.peerError, (args)->{
             log.info("peerError");
         });
