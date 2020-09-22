@@ -266,8 +266,6 @@ public class FileSharingPeer {
 				})
 				.on(PeerManager.peerStopped, (arg)->{
 					log.info("catch event from the local emit-peerStopped");
-					ServerManager serverManager = (ServerManager)arg[0];
-					log.info(serverManager.getName());
 				});
 
 		peerManager.start();
