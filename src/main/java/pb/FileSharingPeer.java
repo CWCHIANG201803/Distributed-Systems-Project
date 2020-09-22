@@ -116,7 +116,7 @@ public class FileSharingPeer {
 			int read = in.read(buffer);
 			if (read == -1) {
 				endpoint.emit(fileContents, ""); // signals no more bytes in file
-				in.close();
+                in.close();
 			} else {
 				endpoint.emit(fileContents, new String(Base64.encodeBase64(Arrays.copyOfRange(buffer, 0, read)),
 						StandardCharsets.US_ASCII));
@@ -320,11 +320,35 @@ public class FileSharingPeer {
              clientManager.on(PeerManager.peerStarted, (args)->{
                 Endpoint endpoint = (Endpoint)args[0];
                 
-                endpoint.emit(getFile, parts[2], endpoint);
+                endpoint.emit(getFile, parts[2]);
+                System.out.println("Getting file " + parts[2] + " from "
+                    + parts[0] + ":" + parts[1]);
+
+                endpoint.on(fileContents, (contents)->{
+                    //if(((String)contents[0]).equals("")) clientManager.emit(ClientManager.sessionStopped);
+                    try {
+                        byte b[] = Base64.decodeBase64((String)contents[0]);
+                        out.write(b);
+                        out.flush();
+                    }
+                    catch(IOException i) {
+                        
+                    }
+                    finally {
+                        try {
+                            if(out != null) out.close();
+                        }
+                        catch(IOException i) {
+
+                        }
+                    }
+                });
              }).on(PeerManager.peerStopped, (args)->{
-                
+                //ClientManager manager = (ClientManager)args[1];
+                //manager.shutdown();
+                System.out.println("in peerStopped");
              }).on(PeerManager.peerError, (args)->{
-                
+                //clientManager.shutdown();
              });
 
 			clientManager.start();
@@ -348,18 +372,32 @@ public class FileSharingPeer {
 	 */
 	private static void queryFiles(String[] keywords) throws UnknownHostException, InterruptedException {
 		String query = String.join(",", keywords);
-		// connect to the index server and tell it the files we are sharing
+		// connect to the index server and tell it the files we are querying
 		PeerManager peerManager = new PeerManager(peerPort);
 		ClientManager clientManager = peerManager.connect(indexServerPort, host);
+        System.out.println("Connected to index server: " + host + ":" + indexServerPort);
+
+
         clientManager.on(PeerManager.peerStarted, (args)->{
             log.info("peerStarted");
             Endpoint endpoint = (Endpoint)args[0];
 
             //query the filenames from index server
             endpoint.emit(IndexServer.queryIndex, query);
+            System.out.println("Sending query to the index sever.");
 
             //listen for queryResponse from index server
             endpoint.on(IndexServer.queryResponse, (hit)->{
+                if(!((String)hit[0]).equals("")) {
+                    System.out.println("Received query response: "+ (String)hit[0]);
+                }
+                else {
+                    System.out.println("Received all responses.");
+                    
+                    //trying to stop the connection:(
+                    //clientManager.emit(PeerManager.peerStopped, "");       
+                    //endpoint.emit(ServerManager.sessionStopped, endpoint);
+                }
                 try {
                     if(!((String)hit[0]).equals("")) getFileFromPeer(peerManager, (String)hit[0]);
                 }
