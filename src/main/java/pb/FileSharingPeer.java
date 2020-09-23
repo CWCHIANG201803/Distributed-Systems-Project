@@ -43,7 +43,6 @@ import pb.utils.Utils;
  */
 public class FileSharingPeer {
 	private static Logger log = Logger.getLogger(FileSharingPeer.class.getName());
-
 	/**
 	 * Events that the peers use between themselves.
 	 */
@@ -195,7 +194,10 @@ public class FileSharingPeer {
 
 		clientManager
 				.on(PeerManager.peerStarted,(args)->{
+
 					Endpoint endpoint = (Endpoint) args[0];
+					System.out.println("Connected to index server: " + endpoint.getOtherEndpointId());
+					System.out.println("Telling the index Server our peer:port=" + peerport);
 					endpoint.on(IndexServer.indexUpdateError,(EventArgs)->{
 								System.out.println("oh..there is an error while updating index..");
 							});
@@ -207,7 +209,8 @@ public class FileSharingPeer {
 					String update = (String) args[0];
 				})
 				.on(PeerManager.peerStopped,(args)->{
-
+					Endpoint endpoint = (Endpoint)args[0];
+					System.out.println("Disconnected from the index server: " + endpoint.getOtherEndpointId());
 				});
 
 		clientManager.start();
@@ -266,8 +269,6 @@ public class FileSharingPeer {
 				})
 				.on(PeerManager.peerStopped, (arg)->{
 					log.info("catch event from the local emit-peerStopped");
-					ServerManager serverManager = (ServerManager)arg[0];
-					log.info(serverManager.getName());
 				});
 
 		peerManager.start();
