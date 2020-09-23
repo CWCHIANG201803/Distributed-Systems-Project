@@ -320,9 +320,8 @@ public class FileSharingPeer {
              clientManager.on(PeerManager.peerStarted, (args)->{
                 Endpoint endpoint = (Endpoint)args[0];
                 
+                System.out.println("Getting file " + parts[2] + " from /" + parts[0] + ":" + parts[1]);
                 endpoint.emit(getFile, parts[2]);
-                System.out.println("Getting file " + parts[2] + " from "
-                    + parts[0] + ":" + parts[1]);
 
                 endpoint.on(fileContents, (contents)->{
                     if(((String)contents[0]).equals("")) {
@@ -354,6 +353,7 @@ public class FileSharingPeer {
                     }*/
                 });
              }).on(PeerManager.peerStopped, (args)->{
+                System.out.println("Disconnected from peer: /" + parts[0] + ":" + parts[1]);
              }).on(PeerManager.peerError, (args)->{
                 //clientManager.shutdown();
              });
@@ -382,16 +382,14 @@ public class FileSharingPeer {
 		// connect to the index server and tell it the files we are querying
 		PeerManager peerManager = new PeerManager(peerPort);
 		ClientManager clientManager = peerManager.connect(indexServerPort, host);
-        System.out.println("Connected to index server: " + host + ":" + indexServerPort);
-
 
         clientManager.on(PeerManager.peerStarted, (args)->{
-            log.info("peerStarted");
+            System.out.println("Connected to index server: " + host + ":" + indexServerPort);
             Endpoint endpoint = (Endpoint)args[0];
 
             //query the filenames from index server
-            endpoint.emit(IndexServer.queryIndex, query);
             System.out.println("Sending query to the index sever.");
+            endpoint.emit(IndexServer.queryIndex, query);
 
             //listen for queryResponse from index server
             endpoint.on(IndexServer.queryResponse, (hit)->{
@@ -416,7 +414,8 @@ public class FileSharingPeer {
                 
             });
         }).on(PeerManager.peerStopped, (args)->{
-            System.out.println("Disconnected from the index sever: " );
+            Endpoint endpoint = (Endpoint)args[0]; 
+            System.out.println("Disconnected from the index sever: " + endpoint.getOtherEndpointId());
         }).on(PeerManager.peerError, (args)->{
             log.info("peerError");
         });
