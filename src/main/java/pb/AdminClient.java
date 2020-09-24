@@ -146,14 +146,20 @@ public class AdminClient  {
             if(shutdown&&!vader&&!force) {
             endpoint.emit(ServerManager.shutdownServer,password);
             log.info("password has been sent out");
+            clientManager.shutdown();
+            log.info("admin shutdown");
             }
             if(shutdown&&!vader&&force) {
                 endpoint.emit(ServerManager.forceShutdownServer,password);
                 log.info("password has been sent out");
+                clientManager.shutdown();
+                log.info("admin shutdown");
                 }
             if(shutdown&&vader&&!force) {
                 endpoint.emit(ServerManager.vaderShutdownServer,password);
                 log.info("password has been sent out");
+                clientManager.shutdown();
+                log.info("admin shutdown");
                 }
             });
 
