@@ -1,16 +1,21 @@
 package pb;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.logging.Logger;
+import java.util.Scanner;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
 import pb.managers.ClientManager;
+import pb.managers.ServerManager;
+import pb.managers.endpoint.Endpoint;
 import pb.utils.Utils;
 
 /**
@@ -33,6 +38,10 @@ public class AdminClient  {
 	private static Logger log = Logger.getLogger(AdminClient.class.getName());
 	private static int port=Utils.serverPort; // default port number for the server
 	private static String host=Utils.serverHost; // default host for the server
+	private static String password="";
+	private static Boolean shutdown=false;
+	private static Boolean vader=false;
+	private static Boolean force=false;
 	
 	private static void help(Options options){
 		String header = "PB Admin Client for Unimelb COMP90015\n\n";
@@ -52,7 +61,10 @@ public class AdminClient  {
         Options options = new Options();
         options.addOption("port",true,"server port, an integer");
         options.addOption("host",true,"hostname, a string");
-        
+        options.addOption("password",true,"password for admin");
+        options.addOption("shutdown",false,"regular shutdown");
+        options.addOption("vader",false,"vader shutdown");
+        options.addOption("force",false,"force shutdown");
         /*
 		 * TODO for project 2B. Include a command line option to read a secret
 		 * (password) from the user. It can simply be a plain text password entered as a
@@ -62,11 +74,12 @@ public class AdminClient  {
 		 * the user would enter -shutdown for just regular shutdown, -shutdown -force
 		 * for force shutdown and -shutdown -vader for vader shutdown.
 		 */
-        
+       
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = null;
         try {
 			cmd = parser.parse( options, args);
+			
 		} catch (ParseException e1) {
 			help(options);
 		}
@@ -74,6 +87,7 @@ public class AdminClient  {
         if(cmd.hasOption("port")){
         	try{
         		port = Integer.parseInt(cmd.getOptionValue("port"));
+        		
 			} catch (NumberFormatException e){
 				System.out.println("-port requires a port number, parsed: "+cmd.getOptionValue("port"));
 				help(options);
@@ -83,6 +97,42 @@ public class AdminClient  {
         if(cmd.hasOption("host")) {
         	host = cmd.getOptionValue("host");
         }
+        if(cmd.hasOption("password")) {
+        	try{
+        		password = (cmd.getOptionValue("password"));
+        		
+			} catch (NumberFormatException e){
+				System.out.println("-password requires be strings, parsed: "+cmd.getOptionValue("password"));
+				help(options);
+			}
+        }
+        if(cmd.hasOption("shutdown")) {
+        	try{
+        		shutdown=true;
+        		
+			} catch (NumberFormatException e){
+				System.out.println("-password requires be strings, parsed: "+cmd.getOptionValue("password"));
+				help(options);
+			}
+        }
+        if(cmd.hasOption("vader")) {
+        	try{
+        		vader=true;
+        		
+			} catch (NumberFormatException e){
+				System.out.println("-password requires be strings, parsed: "+cmd.getOptionValue("password"));
+				help(options);
+			}
+        }
+        if(cmd.hasOption("force")) {
+        	try{
+        		force=true;
+        		
+			} catch (NumberFormatException e){
+				System.out.println("-password requires be strings, parsed: "+cmd.getOptionValue("password"));
+				help(options);
+			}
+        }
         
         // start up the client
         log.info("PB Client starting up");
@@ -91,8 +141,25 @@ public class AdminClient  {
         // and the connection will use a thread that prevents the JVM
         // from terminating immediately
         ClientManager clientManager = new ClientManager(host,port);
-        clientManager.start();
+        clientManager.on(ServerManager.sessionStarted,(args1)->{
+            Endpoint endpoint = (Endpoint)args1[0];
+            if(shutdown&&!vader&&!force) {
+            endpoint.emit(ServerManager.shutdownServer,password);
+            log.info("password has been sent out");
+            }
+            if(shutdown&&!vader&&force) {
+                endpoint.emit(ServerManager.forceShutdownServer,password);
+                log.info("password has been sent out");
+                }
+            if(shutdown&&vader&&!force) {
+                endpoint.emit(ServerManager.vaderShutdownServer,password);
+                log.info("password has been sent out");
+                }
+            });
+
         
+        clientManager.start();
+ 
         /*
 		 * TODO for project 2B. Emit an appropriate shutdown event to the server,
 		 * sending the password. Then shutdown the clientManager. The following line
@@ -100,8 +167,9 @@ public class AdminClient  {
 		 * Don't forget that you need to modify ServerMain.java to listen for these
 		 * events coming from any client that connects to it.
 		 */
-        
+       
         clientManager.join();
+       
         Utils.getInstance().cleanUp();
         
     }

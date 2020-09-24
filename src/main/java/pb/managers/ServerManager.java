@@ -116,6 +116,8 @@ public class ServerManager extends Manager implements ISessionProtocolHandler,
 	 */
 	private final int port;
 	
+	private final String password;
+	
 	/**
 	 * Should we force shutdown, i.e force endpoints to close.
 	 */
@@ -131,6 +133,7 @@ public class ServerManager extends Manager implements ISessionProtocolHandler,
 	 * @param port to use when creating the io thread
 	 */
 	public ServerManager(int port) {
+		this.password = "";
 		this.port=port;
 		liveEndpoints=new HashSet<>();
 		setName("ServerManager"); // name the thread, urgh simple log can't print it :-(
@@ -140,7 +143,12 @@ public class ServerManager extends Manager implements ISessionProtocolHandler,
 	 * TODO: for Project 2B. Create an initializer that does as above but also takes
 	 * a password as an argument.
 	 */
-	
+	public ServerManager(int port,String password) {
+		this.port=port;
+		this.password=password;
+		liveEndpoints=new HashSet<>();
+		setName("ServerManager_with_password");
+	}
 	/**
 	 * TODO: for Project 2B. Use one of these methods appropriately for the event
 	 * emitted, when your server receives a correct password. Usually a single
@@ -281,7 +289,22 @@ public class ServerManager extends Manager implements ISessionProtocolHandler,
 		synchronized(liveEndpoints) {
 			liveEndpoints.add(endpoint);
 		}
-		
+		endpoint.on(shutdownServer,(args)->{
+		String password_admin = (String) args[0];
+		if(password_admin.equals(password)) {
+			shutdown();
+		}	
+		}).on(forceShutdownServer,(args)->{
+		String password_admin = (String) args[0];
+		if(password_admin.equals(password)) {
+			forceShutdown();
+		}
+		}).on(vaderShutdownServer,(args)->{
+			String password_admin = (String) args[0];
+			if(password_admin.equals(password)) {
+				vaderShutdown();
+			}
+		});
 		/*
 		 * TODO: For Project2B Insert code here to ensure that the server listens on the
 		 * endpoint for shutdown events and calls the appropriate method. Use simple

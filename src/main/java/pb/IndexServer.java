@@ -109,6 +109,8 @@ public class IndexServer {
 	 */
 	private static int port=Utils.indexServerPort; // default port number for the server
 	
+	private static String password=null;
+	
 
 	/**
 	 * Update the index with the filename and peerport.
@@ -212,6 +214,7 @@ public class IndexServer {
     	// parse command line options
         Options options = new Options();
         options.addOption("port",true,"server port, an integer");
+        options.addOption("password",true,"password for index server");
         
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = null;
@@ -229,6 +232,16 @@ public class IndexServer {
 				help(options);
 			}
         }
+        if(cmd.hasOption("password")) {
+        	try{
+        		password = (cmd.getOptionValue("password"));
+        		
+			} catch (NumberFormatException e){
+				System.out.println("-password requires be strings, parsed: "+cmd.getOptionValue("password"));
+				help(options);
+			}
+        }
+        
         
         /**
 		 * TODO: for Project 2B. Create a "-password" option that reads a string
@@ -239,7 +252,7 @@ public class IndexServer {
         
         
         // create a server manager and setup event handlers
-        ServerManager serverManager = new ServerManager(port);
+        ServerManager serverManager = new ServerManager(port,password);
         
         // event handlers
         // we must define the event handler callbacks BEFORE starting
@@ -265,6 +278,8 @@ public class IndexServer {
         		String peerport = (String) eventArgs2[0];
         		log.info("Received peer update: "+peerport);
         		peerUpdate(peerport);
+        	
+        		
         	});
         }).on(ServerManager.sessionStopped,(eventArgs)->{
         	Endpoint endpoint = (Endpoint)eventArgs[0];
