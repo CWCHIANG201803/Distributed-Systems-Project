@@ -290,15 +290,16 @@ public class ServerManager extends Manager implements ISessionProtocolHandler,
 			liveEndpoints.add(endpoint);
 		}
 		endpoint.on(shutdownServer,(args)->{
-		String password_admin = (String) args[0];
-		if(password_admin.equals(password)) {
-			shutdown();
-		}	
+
+			String password_admin = (String) args[0];
+			if(password_admin.equals(password)) {
+				shutdown();
+			}
 		}).on(forceShutdownServer,(args)->{
-		String password_admin = (String) args[0];
-		if(password_admin.equals(password)) {
-			forceShutdown();
-		}
+			String password_admin = (String) args[0];
+			if(password_admin.equals(password)) {
+				forceShutdown();
+			}
 		}).on(vaderShutdownServer,(args)->{
 			String password_admin = (String) args[0];
 			if(password_admin.equals(password)) {

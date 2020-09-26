@@ -144,10 +144,10 @@ public class AdminClient  {
         clientManager.on(ServerManager.sessionStarted,(args1)->{
             Endpoint endpoint = (Endpoint)args1[0];
             if(shutdown&&!vader&&!force) {
-            endpoint.emit(ServerManager.shutdownServer,password);
-            log.info("password has been sent out");
-            clientManager.shutdown();
-            log.info("admin shutdown");
+				endpoint.emit(ServerManager.shutdownServer,password);
+				log.info("password has been sent out");
+				clientManager.shutdown();
+				log.info("admin shutdown");
             }
             if(shutdown&&!vader&&force) {
                 endpoint.emit(ServerManager.forceShutdownServer,password);

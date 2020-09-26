@@ -205,8 +205,7 @@ public class IndexServer {
 		System.exit(-1);
 	}
 	
-	public static void main( String[] args ) throws IOException
-    {
+	public static void main( String[] args ) throws IOException, InterruptedException {
     	// set a nice log format
 		System.setProperty("java.util.logging.SimpleFormatter.format",
                 "[%1$tl:%1$tM:%1$tS:%1$tL] [%4$s] %2$s: %5$s%n");
@@ -296,6 +295,8 @@ public class IndexServer {
         // start up the server
         log.info("PB Index Server starting up");
         serverManager.start();
+        serverManager.join();
+        Utils.getInstance().cleanUp();
         
     }
 

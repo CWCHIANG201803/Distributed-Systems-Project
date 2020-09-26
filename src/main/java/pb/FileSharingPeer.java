@@ -1,13 +1,6 @@
 package pb;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -145,7 +138,7 @@ public class FileSharingPeer {
 			InputStream in = new FileInputStream(filename);
 			continueTransmittingFile(in, endpoint);
 		} catch (FileNotFoundException e) {
-			endpoint.emit(fileError);
+			endpoint.emit(fileError, "File does not exist");
 		}
 	}
 
@@ -291,6 +284,9 @@ public class FileSharingPeer {
 		// Create a independent client manager (thread) for each download
 		// response has the format: PeerIP:PeerPort:filename
 		String[] parts = response.split(":", 3);
+		String peerIP = parts[0];
+		String peerPort = parts[1];
+		String fileName = parts[2];
 		ClientManager clientManager = null;
 
 		/*
@@ -307,7 +303,8 @@ public class FileSharingPeer {
         }
 
 		try {
-			OutputStream out = new FileOutputStream(parts[2]);
+			File targetFile = new File(fileName);
+			OutputStream out = new FileOutputStream(targetFile);
 
 			/*
 			 * TODO for project 2B. listen for peerStarted, peerStopped and peerError events
@@ -320,12 +317,12 @@ public class FileSharingPeer {
 
              clientManager.on(PeerManager.peerStarted, (args)->{
                 Endpoint endpoint = (Endpoint)args[0];
-                
-                System.out.println("Getting file " + parts[2] + " from /" + parts[0] + ":" + parts[1]);
-                endpoint.emit(getFile, parts[2]);
+                System.out.println("Getting file " + fileName + " from /" + peerIP + ":" + peerPort);
+                endpoint.emit(getFile, fileName);
 
                 endpoint.on(fileContents, (contents)->{
-                    if(((String)contents[0]).equals("")) {
+                	String fileChunk = (String)contents[0];
+                    if(fileChunk.equals("")) {
                         ClientManager peer = (ClientManager)args[1];
                         peer.shutdown();
                         try {
@@ -333,17 +330,18 @@ public class FileSharingPeer {
                             if(out != null) out.close();
                         }
                         catch(IOException i) {
-
+                        	targetFile.delete();
                         }
                     }
                     try {
-                        byte b[] = Base64.decodeBase64((String)contents[0]);
+                        byte[] b = Base64.decodeBase64((String)contents[0]);
                         out.write(b);
                         //out.flush();
                     }
                     catch(IOException i) {
-                        
+                    	targetFile.delete();
                     }
+					System.out.println("file downloaded:" + fileName);
                     /*finally {
                         try {
                             if(out != null) out.close();
@@ -354,10 +352,13 @@ public class FileSharingPeer {
                     }*/
                 });
              }).on(PeerManager.peerStopped, (args)->{
-                System.out.println("Disconnected from peer: /" + parts[0] + ":" + parts[1]);
+                System.out.println("Disconnected from peer: /" + peerIP + ":" + peerPort);
              }).on(PeerManager.peerError, (args)->{
                 //clientManager.shutdown();
-             });
+             }).on(FileSharingPeer.fileError,(args)->{
+
+
+			 });
 
 			clientManager.start();
 			/*
@@ -412,7 +413,7 @@ public class FileSharingPeer {
 
             //listen for queryError from nowhere
             endpoint.on(IndexServer.queryError, (none)->{
-                
+                log.severe("something goes wrong while querying...");
             });
         }).on(PeerManager.peerStopped, (args)->{
             Endpoint endpoint = (Endpoint)args[0]; 
