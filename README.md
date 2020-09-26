@@ -1,26 +1,39 @@
 # comp90015-assignment2b
 
-To build the code, in main direcory, use : mvn package
+# How to demo the system?
+
+To build the code, in root direcory:
+	(1) open a new terminal at the root directory
+	(2) use command: package
 
 The following lists the step to run the system.
-1. Index server. To run the index server, use this command:
-    java -cp target/pb2b-0.0.1-SNAPSHOT-jar-with-dependencies.jar pb.IndexServer
 
+1. create two subdirectories in the root directory: test1 and test2
+	 mkdir test1 test2
 
-2. For FileSharingPeer, there are two modes: 
-    (a) update the file list (not the real file) to the index server (client+server). 
-        For example, a peer can provide the list of shared files (file1.txt, file2.txt, and test.jar) to the index server:
-        
-        java -cp target/pb2b-0.0.1-SNAPSHOT-jar-with-dependencies.jar pb.FileSharingPeer -share ShareFile/file1.txt ShareFile/file2.txt ShareFile/test.jar
+2. copy all files to be shared to the directory test1: 
+		cp ShareFile test1
 
-        Note: (1) the file name should include the host directory name. 
-              (2) press enter to terminate this peer or later it will become a content provider.
+3. To start the index server with password:
+	(1). open a new terminal at the root directory
+	(2). use the command:
+		java -cp ./target/pb2b-0.0.1-SNAPSHOT-jar-with-dependencies.jar pb.IndexServer -password 1234
 
-	(b) query the file to the index server, and then turn to receive the real file from the peer
-		For example, a query peer queries the file prefixing "file" and postfix "jar":
-		Followed by (a), this client peer will receive file1.txt, file2.txt, and test.jar from the sharing peer.
+4. To start the file index upload peer:
+	(1). open a new terminal at the root directory
+	(2). switch to subdirectory test1
+		cd test1
+	(3). use the command:
+		java -cp ../target/pb2b-0.0.1-SNAPSHOT-jar-with-dependencies.jar pb.FileSharingPeer -share File1.txt File2.txt test.jar
 
-		java -cp target/pb2b-0.0.1-SNAPSHOT-jar-with-dependencies.jar pb.FileSharingPeer -port 3300 -query file jar
-
-		How to work?
-		First, this peer will come to index server to ask the source and file, then the index server will provide the peer sharing the file. If there is nothing wrong, second, this peer will disconnect with index server and turn to get the file from the peer provided by the index server. Once tranmission is finished, this peer will also be terminated.
+5. To start the peer querying files:
+	(1). open a new terminal at the root directory
+	(2). go to subdirectory test2
+		cd ../test2
+	(3). use the command, so the uploaded file will be downloaded to the subdirectory test2
+		java -cp ../target/pb2b-0.0.1-SNAPSHOT-jar-with-dependencies.jar pb.FileSharingPeer -query File jar
+   
+6. To use the AdminClient to shutdown the server:
+	(1) open a new terminal at the root directory
+	(2). use command, this will gentally shutdown the server. other options are -force or -vader
+		java -cp ./target/pb2b-0.0.1-SNAPSHOT-jar-with-dependencies.jar pb.AdminClient -password 1234 -shutdown -port 3101
