@@ -122,7 +122,7 @@ public class FileSharingPeer {
 				}
 			}
 		} catch (IOException e) {
-			endpoint.emit(fileError);
+			endpoint.emit(fileError, "File does not exist.");
 		}
 	}
 
@@ -136,10 +136,11 @@ public class FileSharingPeer {
 	public static void startTransmittingFile(String filename, Endpoint endpoint) {
 		try {
 			InputStream in = new FileInputStream(filename);
-			continueTransmittingFile(in, endpoint);
+            continueTransmittingFile(in, endpoint);
 		} catch (FileNotFoundException e) {
-			endpoint.emit(fileError, "File does not exist");
-		}
+			System.out.println("hiiiiiiiiiii");
+            endpoint.emit(fileError, "File does not exist.");
+        }
 	}
 
 	/**
@@ -341,24 +342,17 @@ public class FileSharingPeer {
                     catch(IOException i) {
                     	targetFile.delete();
                     }
-					System.out.println("file downloaded:" + fileName);
-                    /*finally {
-                        try {
-                            if(out != null) out.close();
-                        }
-                        catch(IOException i) {
-
-                        }
-                    }*/
+					//System.out.println("file downloaded:" + fileName);
+                }).on(fileError, (arg)->{
+                    System.out.println((String)arg[0]);
+                    targetFile.delete();
+                    ClientManager peer = (ClientManager)args[1];
+                    peer.shutdown();
                 });
              }).on(PeerManager.peerStopped, (args)->{
                 System.out.println("Disconnected from peer: /" + peerIP + ":" + peerPort);
              }).on(PeerManager.peerError, (args)->{
-                //clientManager.shutdown();
-             }).on(FileSharingPeer.fileError,(args)->{
-
-
-			 });
+             });
 
 			clientManager.start();
 			/*
