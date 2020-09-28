@@ -337,12 +337,10 @@ public class FileSharingPeer {
                     try {
                         byte[] b = Base64.decodeBase64((String)contents[0]);
                         out.write(b);
-                        //out.flush();
                     }
                     catch(IOException i) {
                     	targetFile.delete();
                     }
-					//System.out.println("file downloaded:" + fileName);
                 }).on(fileError, (arg)->{
                     System.out.println((String)arg[0]);
                     targetFile.delete();
