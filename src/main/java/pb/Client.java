@@ -10,13 +10,14 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
-import pb.client.ClientManager;
+import pb.managers.ClientManager;
+import pb.utils.Utils;
 
 /**
  * Client main. Parse command line options and provide default values.
  * 
- * @see {@link pb.ClientManager}
- * @see {@link pb.Utils}
+ * @see {@link pb.managers.ClientManager}
+ * @see {@link pb.utils.Utils}
  * @author aaron
  *
  */
@@ -33,7 +34,7 @@ public class Client  {
 		System.exit(-1);
 	}
 	
-	public static void main( String[] args ) throws IOException
+	public static void main( String[] args ) throws IOException, InterruptedException
     {
     	// set a nice log format
 		System.setProperty("java.util.logging.SimpleFormatter.format",
@@ -71,7 +72,14 @@ public class Client  {
         // the client manager will make a connection with the server
         // and the connection will use a thread that prevents the JVM
         // from terminating immediately
-        new ClientManager(host,port);
+        ClientManager clientManager = new ClientManager(host,port);
+        clientManager.start();
+        // just simulate the client doing some work and then closing the session.
+        Utils.getInstance().setTimeout(()->{
+        	clientManager.shutdown();
+        }, 120000);
+        clientManager.join();
+        Utils.getInstance().cleanUp();
         
     }
 }
