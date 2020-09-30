@@ -12,7 +12,7 @@ The following lists the step to run the system.
 	 mkdir test1 test2
 
 2. copy all files to be shared to the directory test1: 
-		cp ShareFile test1
+		cp ShareFile/*.* test1
 
 3. To start the index server with password:
 	(1). open a new terminal at the root directory
