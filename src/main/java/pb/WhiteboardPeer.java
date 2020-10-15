@@ -2,6 +2,7 @@ package pb;
 
 
 import java.util.logging.Logger;
+import java.net.UnknownHostException;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -49,7 +50,7 @@ public class WhiteboardPeer {
 		System.exit(-1);
 	}
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws UnknownHostException, InterruptedException {
 		// set a nice log format
 		System.setProperty("java.util.logging.SimpleFormatter.format",
                 "[%1$tl:%1$tM:%1$tS:%1$tL] %2$s %4$s: %5$s%n");

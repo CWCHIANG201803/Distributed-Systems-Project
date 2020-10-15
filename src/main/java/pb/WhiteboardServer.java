@@ -10,8 +10,9 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
-
 import pb.managers.ServerManager;
+import pb.managers.IOThread;
+import pb.managers.endpoint.Endpoint;
 import pb.utils.Utils;
 
 /**
@@ -132,6 +133,13 @@ public class WhiteboardServer {
         /**
          * TODO: Put some server related code here.
          */
+
+		serverManager.on(IOThread.ioThread, (arg)->{
+			log.info("using Internet address: " + (String)arg[0]);
+		}).on(ServerManager.sessionStarted, (arg)->{
+			Endpoint endpoint = (Endpoint)arg[0];
+			log.info("Client session started: " + endpoint.getOtherEndpointId());
+		});
         
         // start up the server
         log.info("Whiteboard Server starting up");

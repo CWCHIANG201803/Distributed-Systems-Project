@@ -11,6 +11,7 @@ import java.awt.event.ItemListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.time.Instant;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -26,6 +27,9 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+
+import pb.managers.PeerManager;
+import pb.managers.ClientManager;
 
 
 /**
@@ -186,11 +190,20 @@ public class WhiteboardApp {
 	 * Initialize the white board app.
 	 */
 	public WhiteboardApp(int peerPort,String whiteboardServerHost, 
-			int whiteboardServerPort) {
+			int whiteboardServerPort) throws UnknownHostException, InterruptedException {
 		whiteboards=new HashMap<>();
+		PeerManager peerManager = new PeerManager(peerPort);
+		ClientManager clientManager = peerManager.connect(3101, whiteboardServerHost);
 
-		show(peerport);
+		clientManager.on(PeerManager.peerStarted, (args)->{
+			log.info("connecting to whiteboard server");
+		});
+
 		
+		show(peerport);
+		clientManager.start();
+		clientManager.join();
+
 	}
 	
 	/******
