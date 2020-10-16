@@ -12,6 +12,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.time.Instant;
 import java.net.UnknownHostException;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -193,14 +194,15 @@ public class WhiteboardApp {
 			int whiteboardServerPort) throws UnknownHostException, InterruptedException {
 		whiteboards=new HashMap<>();
 		PeerManager peerManager = new PeerManager(peerPort);
-		ClientManager clientManager = peerManager.connect(3101, whiteboardServerHost);
+		ClientManager clientManager = peerManager.connect(whiteboardServerPort, whiteboardServerHost);
 
 		clientManager.on(PeerManager.peerStarted, (args)->{
 			log.info("connecting to whiteboard server");
+			// todo: ask the server for the shared board
 		});
 
-		
-		show(peerport);
+		String whiteboardName = InetAddress.getLocalHost().getHostAddress() + ":" + String.valueOf(peerPort);
+		show(whiteboardName);
 		clientManager.start();
 		clientManager.join();
 
@@ -292,7 +294,7 @@ public class WhiteboardApp {
 	
 	
 	// From whiteboard peer
-	
+	// to emit shareBoard to whiteboardServer but how? 
 	
 	
 	/******
