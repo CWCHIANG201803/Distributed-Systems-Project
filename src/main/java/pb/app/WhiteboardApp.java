@@ -10,6 +10,8 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.time.Instant;
 import java.net.UnknownHostException;
 import java.net.InetAddress;
@@ -29,8 +31,10 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
+import pb.WhiteboardServer;
 import pb.managers.PeerManager;
 import pb.managers.ClientManager;
+import pb.managers.endpoint.Endpoint;
 
 
 /**
@@ -186,19 +190,23 @@ public class WhiteboardApp {
 	JComboBox<String> boardComboBox;
 	boolean modifyingComboBox=false;
 	boolean modifyingCheckBox=false;
-	
+	PeerManager peerManager = null;
+	ClientManager clientManager = null;
+	Endpoint endpoint = null;
+
 	/**
 	 * Initialize the white board app.
 	 */
 	public WhiteboardApp(int peerPort,String whiteboardServerHost, 
 			int whiteboardServerPort) throws UnknownHostException, InterruptedException {
 		whiteboards=new HashMap<>();
-		PeerManager peerManager = new PeerManager(peerPort);
-		ClientManager clientManager = peerManager.connect(whiteboardServerPort, whiteboardServerHost);
+		peerManager = new PeerManager(peerPort);
+		clientManager = peerManager.connect(whiteboardServerPort, whiteboardServerHost);
 
 		clientManager.on(PeerManager.peerStarted, (args)->{
 			log.info("connecting to whiteboard server");
 			// todo: ask the server for the shared board
+			endpoint = (Endpoint)args[0];
 		});
 
 		String whiteboardName = InetAddress.getLocalHost().getHostAddress() + ":" + String.valueOf(peerPort);
@@ -417,6 +425,11 @@ public class WhiteboardApp {
 	public void setShare(boolean share) {
 		if(selectedBoard!=null) {
         	selectedBoard.setShared(share);
+        	if(share){
+				endpoint.emit(WhiteboardServer.shareBoard, "share board");
+			}else{
+        		endpoint.emit(WhiteboardServer.unshareBoard, "not want to share board");
+			}
         } else {
         	log.severe("there is no selected board");
         }

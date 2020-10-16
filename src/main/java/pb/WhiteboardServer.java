@@ -134,12 +134,23 @@ public class WhiteboardServer {
          * TODO: Put some server related code here.
          */
 
-		serverManager.on(IOThread.ioThread, (arg)->{
-			log.info("using Internet address: " + (String)arg[0]);
-		}).on(ServerManager.sessionStarted, (arg)->{
-			Endpoint endpoint = (Endpoint)arg[0];
-			log.info("Client session started: " + endpoint.getOtherEndpointId());
-		});
+		serverManager
+				.on(IOThread.ioThread, (arg)->{
+					log.info("using Internet address: " + (String)arg[0]);
+				})
+				.on(ServerManager.sessionStarted, (arg)->{
+					Endpoint endpoint = (Endpoint)arg[0];
+					log.info("Client session started: " + endpoint.getOtherEndpointId());
+					endpoint
+							.on(shareBoard,(Args)->{
+								String msg = (String)Args[0];
+								log.info(msg);
+							})
+							.on(unshareBoard, (Args)->{
+								String msg = (String)Args[0];
+								log.info(msg);
+							});
+				});
         
         // start up the server
         log.info("Whiteboard Server starting up");
