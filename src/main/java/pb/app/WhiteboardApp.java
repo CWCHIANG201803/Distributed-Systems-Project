@@ -192,6 +192,7 @@ public class WhiteboardApp {
 			// todo: ask the server for the shared board
 			endpoint = (Endpoint)args[0];
 			onShareBoard(endpoint);
+			onUnshareBoard(endpoint);
 		});
 
 		this.peerport = InetAddress.getLoopbackAddress().getHostAddress() + ":" + peerPort;
@@ -284,11 +285,7 @@ public class WhiteboardApp {
 	 ******/
 	
 	// From whiteboard server
-
-
-	
-	// From whiteboard peer
-	// to emit shareBoard to whiteboardServer but how? 
+	//we should create a global clientManager but not endpoint?
 	private void onShareBoard(Endpoint endpoint){
 		endpoint.on(WhiteboardServer.sharingBoard, (Args)->{
 			String sharedBoard = (String)Args[0];
@@ -297,6 +294,18 @@ public class WhiteboardApp {
 			selectedABoard();
 		});
 	}
+
+	private void onUnshareBoard(Endpoint endpoint) {
+		endpoint.on(WhiteboardServer.unsharingBoard, (Args)->{
+			String sharedBoard = (String)Args[0];
+			log.info(ANSI_CYAN + sharedBoard + ANSI_RESET);
+			boardComboBox.removeItem(sharedBoard);
+			selectedABoard();
+		});
+	}
+
+	// From whiteboard peer
+
 	
 	/******
 	 * 
@@ -425,6 +434,8 @@ public class WhiteboardApp {
 
         	if(share) {
 				endpoint.emit(WhiteboardServer.shareBoard, selectedBoard.getName());
+			} else {
+				endpoint.emit(WhiteboardServer.unshareBoard, selectedBoard.getName());
 			}
 		} else {
         	log.severe("there is no selected board");
