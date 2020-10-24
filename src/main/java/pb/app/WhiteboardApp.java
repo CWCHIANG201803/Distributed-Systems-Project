@@ -288,19 +288,20 @@ public class WhiteboardApp {
 	//we should create a global clientManager but not endpoint?
 	private void onShareBoard(Endpoint endpoint){
 		endpoint.on(WhiteboardServer.sharingBoard, (Args)->{
-			String sharedBoard = (String)Args[0];
-			log.info(ANSI_CYAN + sharedBoard + ANSI_RESET);
-			boardComboBox.addItem(sharedBoard);
-			selectedABoard();
+			String sharedBoardName = (String)Args[0];
+			log.info(ANSI_CYAN + sharedBoardName + ANSI_RESET);
+			Whiteboard sharedBoard = new Whiteboard(sharedBoardName, true);
+			addBoard(sharedBoard, false);
+			//selectedABoard();
 		});
 	}
 
 	private void onUnshareBoard(Endpoint endpoint) {
 		endpoint.on(WhiteboardServer.unsharingBoard, (Args)->{
-			String sharedBoard = (String)Args[0];
-			log.info(ANSI_CYAN + sharedBoard + ANSI_RESET);
-			boardComboBox.removeItem(sharedBoard);
-			selectedABoard();
+			String sharedBoardName = (String)Args[0];
+			log.info(ANSI_CYAN + sharedBoardName + ANSI_RESET);
+			deleteBoard(sharedBoardName);
+			//selectedABoard();
 		});
 	}
 
