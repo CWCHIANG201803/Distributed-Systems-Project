@@ -1,6 +1,10 @@
 package pb;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import org.apache.commons.cli.CommandLine;
@@ -15,6 +19,8 @@ import pb.managers.IOThread;
 import pb.managers.endpoint.Endpoint;
 import pb.utils.Utils;
 
+import static pb.LogColor.*;
+
 /**
  * Simple whiteboard server to provide whiteboard peer notifications.
  * @author aaron
@@ -22,7 +28,8 @@ import pb.utils.Utils;
  */
 public class WhiteboardServer {
 	private static Logger log = Logger.getLogger(WhiteboardServer.class.getName());
-	
+
+
 	/**
 	 * Emitted by a client to tell the server that a board is being shared. Argument
 	 * must have the format "host:port:boardid".
@@ -81,8 +88,22 @@ public class WhiteboardServer {
 	 * Default port number.
 	 */
 	private static int port = Utils.indexServerPort;
-	
-	
+
+	private static Map<String, Endpoint> clients = new HashMap<>();
+
+
+	private static void broadcast(List<String> users, Map<String,Endpoint> sessions, String sharer, String msg){
+		if(users.isEmpty())
+			return;
+		else{
+			String client = users.remove(0);
+			if(!client.equals(sharer))
+				sessions.get(client).emit(WhiteboardServer.sharingBoard, msg);
+			Utils.getInstance().setTimeout(()->{
+				broadcast(users, sessions, sharer, msg);
+			},10);
+		}
+	}
 	
 	private static void help(Options options){
 		String header = "PB Whiteboard Server for Unimelb COMP90015\n\n";
@@ -90,6 +111,11 @@ public class WhiteboardServer {
 		HelpFormatter formatter = new HelpFormatter();
 		formatter.printHelp("pb.IndexServer", header, options, footer, true);
 		System.exit(-1);
+	}
+
+	public static void getConnectedPeer(){
+		log.info("size of structure" + clients.size());
+
 	}
 	
 	public static void main( String[] args ) throws IOException, InterruptedException
@@ -134,12 +160,27 @@ public class WhiteboardServer {
          * TODO: Put some server related code here.
          */
 
-		serverManager.on(IOThread.ioThread, (arg)->{
-			log.info("using Internet address: " + (String)arg[0]);
-		}).on(ServerManager.sessionStarted, (arg)->{
-			Endpoint endpoint = (Endpoint)arg[0];
-			log.info("Client session started: " + endpoint.getOtherEndpointId());
-		});
+		serverManager
+				.on(IOThread.ioThread, (arg)->{
+					log.info("using Internet address: " + (String)arg[0]);
+				})
+				.on(ServerManager.sessionStarted, (arg)->{
+					Endpoint endpoint = (Endpoint)arg[0];
+					log.info("Client session started: " + endpoint.getOtherEndpointId());
+					clients.put(endpoint.getOtherEndpointId(), endpoint);
+
+					endpoint
+							.on(shareBoard,(Args)->{
+								String msg = (String)Args[0];
+								log.info(ANSI_BLUE +"Received share request " + msg + ANSI_RESET);
+								String eventRaiser = endpoint.getOtherEndpointId();
+								broadcast(new ArrayList<>(clients.keySet()), clients, eventRaiser, msg);
+							})
+							.on(unshareBoard, (Args)->{
+								String msg = (String)Args[0];
+								log.info(msg);
+							});
+				});
         
         // start up the server
         log.info("Whiteboard Server starting up");

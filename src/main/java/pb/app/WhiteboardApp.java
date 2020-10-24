@@ -1,36 +1,21 @@
 package pb.app;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.time.Instant;
-import java.net.UnknownHostException;
+import pb.WhiteboardServer;
+import pb.managers.ClientManager;
+import pb.managers.PeerManager;
+import pb.managers.endpoint.Endpoint;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
+import java.net.UnknownHostException;
+import java.time.Instant;
+import java.util.*;
 import java.util.logging.Logger;
 
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.JComboBox;
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
-
-import pb.managers.PeerManager;
-import pb.managers.ClientManager;
+import static pb.LogColor.ANSI_CYAN;
+import static pb.LogColor.ANSI_RESET;
 
 
 /**
@@ -39,7 +24,10 @@ import pb.managers.ClientManager;
  */
 public class WhiteboardApp {
 	private static Logger log = Logger.getLogger(WhiteboardApp.class.getName());
-	
+
+
+
+
 	/**
 	 * Emitted to another peer to subscribe to updates for the given board. Argument
 	 * must have format "host:port:boardid".
@@ -186,26 +174,31 @@ public class WhiteboardApp {
 	JComboBox<String> boardComboBox;
 	boolean modifyingComboBox=false;
 	boolean modifyingCheckBox=false;
-	
+	PeerManager peerManager = null;
+	ClientManager clientManager = null;
+	Endpoint endpoint = null;
+
 	/**
 	 * Initialize the white board app.
 	 */
 	public WhiteboardApp(int peerPort,String whiteboardServerHost, 
 			int whiteboardServerPort) throws UnknownHostException, InterruptedException {
 		whiteboards=new HashMap<>();
-		PeerManager peerManager = new PeerManager(peerPort);
-		ClientManager clientManager = peerManager.connect(whiteboardServerPort, whiteboardServerHost);
+		peerManager = new PeerManager(peerPort);
+		clientManager = peerManager.connect(whiteboardServerPort, whiteboardServerHost);
 
 		clientManager.on(PeerManager.peerStarted, (args)->{
 			log.info("connecting to whiteboard server");
 			// todo: ask the server for the shared board
+			endpoint = (Endpoint)args[0];
+			onShareBoard(endpoint);
 		});
 
-		String whiteboardName = InetAddress.getLocalHost().getHostAddress() + ":" + String.valueOf(peerPort);
-		show(whiteboardName);
+		this.peerport = InetAddress.getLoopbackAddress().getHostAddress() + ":" + peerPort;
+		show(peerport);
+
 		clientManager.start();
 		clientManager.join();
-
 	}
 	
 	/******
@@ -291,11 +284,19 @@ public class WhiteboardApp {
 	 ******/
 	
 	// From whiteboard server
-	
+
+
 	
 	// From whiteboard peer
 	// to emit shareBoard to whiteboardServer but how? 
-	
+	private void onShareBoard(Endpoint endpoint){
+		endpoint.on(WhiteboardServer.sharingBoard, (Args)->{
+			String sharedBoard = (String)Args[0];
+			log.info(ANSI_CYAN + sharedBoard + ANSI_RESET);
+			boardComboBox.addItem(sharedBoard);
+			selectedABoard();
+		});
+	}
 	
 	/******
 	 * 
@@ -303,6 +304,8 @@ public class WhiteboardApp {
 	 * cut from these methods.
 	 * 
 	 ******/
+
+
 	
 	/**
 	 * Wait for the peer manager to finish all threads.
@@ -415,9 +418,15 @@ public class WhiteboardApp {
 	 * Set the share status on the selected board.
 	 */
 	public void setShare(boolean share) {
+
+
 		if(selectedBoard!=null) {
         	selectedBoard.setShared(share);
-        } else {
+
+        	if(share) {
+				endpoint.emit(WhiteboardServer.shareBoard, selectedBoard.getName());
+			}
+		} else {
         	log.severe("there is no selected board");
         }
 	}
@@ -579,8 +588,8 @@ public class WhiteboardApp {
 		// add to content pane
 		content.add(controls, BorderLayout.WEST);
 		content.add(controlsNorth,BorderLayout.NORTH);
-
-		frame.setSize(600, 600);
+		// origin: 600, 600
+		frame.setSize(600, 300);
 		
 		// create an initial board
 		createBoard();
