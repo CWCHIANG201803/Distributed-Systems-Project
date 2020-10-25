@@ -89,10 +89,16 @@ public class WhiteboardServer {
 	 */
 	private static int port = Utils.indexServerPort;
 
+	//all the peers
 	private static Map<String, Endpoint> clients = new HashMap<>();
 
+	//the boards that are shared by each peer
+	//String: board name
+	//Endpoint: peers
+	//private static Map<String, Endpoint> sharedBoards = new HashMap<>();
+
 	private static void broadcast(List<String> users, Map<String,Endpoint> sessions,
-		String sharer, String event, String msg){
+			String sharer, String event, String msg){
 		if(users.isEmpty())
 			return;
 		else{
@@ -171,16 +177,16 @@ public class WhiteboardServer {
 
 					endpoint
 							.on(shareBoard,(Args)->{
-								String msg = (String)Args[0];
-								log.info(ANSI_BLUE +"Received share request " + msg + ANSI_RESET);
+								String sharedBoard = (String)Args[0];
+								//log.info(ANSI_BLUE +"Received share request " + sharedBoard + ANSI_RESET);
 								String eventRaiser = endpoint.getOtherEndpointId();
-								broadcast(new ArrayList<>(clients.keySet()), clients, eventRaiser, sharingBoard, msg);
+								broadcast(new ArrayList<>(clients.keySet()), clients, eventRaiser, sharingBoard, sharedBoard);
 							})
 							.on(unshareBoard, (Args)->{
-								String msg = (String)Args[0];
-								log.info(ANSI_BLUE +"Received unshare request " + msg + ANSI_RESET);
+								String sharedBoard = (String)Args[0];
+								//log.info(ANSI_BLUE +"Received unshare request " + sharedBoard + ANSI_RESET);
 								String eventRaiser = endpoint.getOtherEndpointId();
-								broadcast(new ArrayList<>(clients.keySet()), clients, eventRaiser, unsharingBoard, msg);
+								broadcast(new ArrayList<>(clients.keySet()), clients, eventRaiser, unsharingBoard, sharedBoard);
 							});
 				});
         

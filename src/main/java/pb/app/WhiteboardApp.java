@@ -174,9 +174,11 @@ public class WhiteboardApp {
 	JComboBox<String> boardComboBox;
 	boolean modifyingComboBox=false;
 	boolean modifyingCheckBox=false;
+	
 	PeerManager peerManager = null;
 	ClientManager clientManager = null;
 	Endpoint endpoint = null;
+	ArrayList<String> sharingPeers = new ArrayList<String>();
 
 	/**
 	 * Initialize the white board app.
@@ -288,20 +290,20 @@ public class WhiteboardApp {
 	//we should create a global clientManager but not endpoint?
 	private void onShareBoard(Endpoint endpoint){
 		endpoint.on(WhiteboardServer.sharingBoard, (Args)->{
-			String sharedBoardName = (String)Args[0];
-			log.info(ANSI_CYAN + sharedBoardName + ANSI_RESET);
-			Whiteboard sharedBoard = new Whiteboard(sharedBoardName, true);
-			addBoard(sharedBoard, false);
-			//selectedABoard();
+			String sharedBoard = (String)Args[0];
+			log.info(ANSI_CYAN + getBoardName(sharedBoard) + ANSI_RESET);
+			Whiteboard board = new Whiteboard(getBoardName(sharedBoard), true);
+			board.whiteboardFromString(getBoardName(sharedBoard), sharedBoard);
+			sharingPeers.add(sharedBoard);
+			addBoard(board, false);
 		});
 	}
 
 	private void onUnshareBoard(Endpoint endpoint) {
 		endpoint.on(WhiteboardServer.unsharingBoard, (Args)->{
-			String sharedBoardName = (String)Args[0];
-			log.info(ANSI_CYAN + sharedBoardName + ANSI_RESET);
-			deleteBoard(sharedBoardName);
-			//selectedABoard();
+			String sharedBoard = (String)Args[0];
+			log.info(ANSI_CYAN + getBoardName(sharedBoard) + ANSI_RESET);
+			deleteBoard(getBoardName(sharedBoard));
 		});
 	}
 
@@ -434,9 +436,9 @@ public class WhiteboardApp {
         	selectedBoard.setShared(share);
 
         	if(share) {
-				endpoint.emit(WhiteboardServer.shareBoard, selectedBoard.getName());
+				endpoint.emit(WhiteboardServer.shareBoard, selectedBoard.toString());
 			} else {
-				endpoint.emit(WhiteboardServer.unshareBoard, selectedBoard.getName());
+				endpoint.emit(WhiteboardServer.unshareBoard, selectedBoard.toString());
 			}
 		} else {
         	log.severe("there is no selected board");
