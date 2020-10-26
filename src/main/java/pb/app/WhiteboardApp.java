@@ -2,20 +2,24 @@ package pb.app;
 
 import pb.WhiteboardServer;
 import pb.managers.ClientManager;
+import pb.managers.IOThread;
 import pb.managers.PeerManager;
+import pb.managers.ServerManager;
 import pb.managers.endpoint.Endpoint;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.Instant;
 import java.util.*;
 import java.util.logging.Logger;
 
-import static pb.LogColor.ANSI_CYAN;
-import static pb.LogColor.ANSI_RESET;
+import static pb.LogColor.*;
 
 
 /**
@@ -174,20 +178,38 @@ public class WhiteboardApp {
 	JComboBox<String> boardComboBox;
 	boolean modifyingComboBox=false;
 	boolean modifyingCheckBox=false;
-	
+
 	PeerManager peerManager = null;
-	ClientManager clientManager = null;
+//	ClientManager clientManager = null;
 	Endpoint endpoint = null;
 	ArrayList<String> sharingPeers = new ArrayList<String>();
-
 	/**
 	 * Initialize the white board app.
 	 */
 	public WhiteboardApp(int peerPort,String whiteboardServerHost, 
 			int whiteboardServerPort) throws UnknownHostException, InterruptedException {
 		whiteboards=new HashMap<>();
+
 		peerManager = new PeerManager(peerPort);
-		clientManager = peerManager.connect(whiteboardServerPort, whiteboardServerHost);
+		peerManager
+				.on(PeerManager.peerStarted, (args) -> {
+
+				})
+				.on(PeerManager.peerStopped, (args)->{
+
+				})
+				.on(PeerManager.peerError, (args)->{
+
+				})
+				.on(PeerManager.peerServerManager, (args)->{
+					ServerManager serverManager = (ServerManager)args[0];
+					serverManager.on(IOThread.ioThread, (args2)->{
+						log.info("connected from another client");
+					});
+				});
+		peerManager.start();
+
+		ClientManager clientManager = peerManager.connect(whiteboardServerPort, whiteboardServerHost);
 
 		clientManager.on(PeerManager.peerStarted, (args)->{
 			log.info("connecting to whiteboard server");
@@ -293,8 +315,8 @@ public class WhiteboardApp {
 			String sharedBoard = (String)Args[0];
 			log.info(ANSI_CYAN + getBoardName(sharedBoard) + ANSI_RESET);
 			Whiteboard board = new Whiteboard(getBoardName(sharedBoard), true);
-			board.whiteboardFromString(getBoardName(sharedBoard), sharedBoard);
-			sharingPeers.add(sharedBoard);
+//			board.whiteboardFromString(getBoardName(sharedBoard), sharedBoard);
+//			sharingPeers.add(sharedBoard);
 			addBoard(board, false);
 		});
 	}
@@ -424,6 +446,30 @@ public class WhiteboardApp {
 	public void selectedABoard() {
 		drawSelectedWhiteboard();
 		log.info("selected board: "+selectedBoard.getName());
+
+		if(selectedBoard.isRemote()){
+			String peerIP = getIP(selectedBoard.getName());
+			int peerServerPort = getPort(selectedBoard.getName());
+			String boardID = getBoardIdAndData(selectedBoard.getName());
+
+			ClientManager clientManager = null;
+			try {
+				log.info("try to connect");
+				log.info(ANSI_GREEN + boardID + ANSI_RESET);
+				clientManager = peerManager.connect(peerServerPort, peerIP);
+			} catch (InterruptedException | UnknownHostException e) {
+				e.printStackTrace();
+			}
+			try {
+				OutputStream out = new FileOutputStream(boardID);
+				clientManager.on(PeerManager.peerStarted, (args)->{
+					log.info(ANSI_YELLOW + "how are you doing?" + ANSI_RESET);
+				});
+				clientManager.start();
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 	
 	/**
