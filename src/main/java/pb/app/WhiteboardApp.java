@@ -10,6 +10,7 @@ import pb.managers.endpoint.Endpoint;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.DataOutputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
@@ -17,6 +18,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.Instant;
 import java.util.*;
+import java.util.List;
 import java.util.logging.Logger;
 
 import static pb.LogColor.*;
@@ -179,6 +181,8 @@ public class WhiteboardApp {
 	boolean modifyingComboBox=false;
 	boolean modifyingCheckBox=false;
 
+	static List<String> sharedBoards = new ArrayList<>();
+
 	PeerManager peerManager = null;
 //	ClientManager clientManager = null;
 	Endpoint endpoint = null;
@@ -193,7 +197,15 @@ public class WhiteboardApp {
 		peerManager = new PeerManager(peerPort);
 		peerManager
 				.on(PeerManager.peerStarted, (args) -> {
+					Endpoint endpoint = (Endpoint)args[0];
+					log.info(ANSI_RED+ "connection from peer: " + endpoint.getOtherEndpointId() + ANSI_RESET);
+					endpoint
+							.on(getBoardData, (args2)->{
+								log.info(ANSI_YELLOW + "try to query data" + ANSI_RESET);
+								String sharedBoardData = selectedBoard.toString();
+								endpoint.emit(boardData, sharedBoardData);
 
+							});
 				})
 				.on(PeerManager.peerStopped, (args)->{
 
@@ -221,6 +233,13 @@ public class WhiteboardApp {
 
 		this.peerport = InetAddress.getLoopbackAddress().getHostAddress() + ":" + peerPort;
 		show(peerport);
+
+		log.info("The shared board is : ");
+
+
+		for(var board : sharedBoards){
+			log.info(ANSI_CYAN + board + ANSI_RESET);
+		}
 
 		clientManager.start();
 		clientManager.join();
@@ -315,8 +334,8 @@ public class WhiteboardApp {
 			String sharedBoard = (String)Args[0];
 			log.info(ANSI_CYAN + getBoardName(sharedBoard) + ANSI_RESET);
 			Whiteboard board = new Whiteboard(getBoardName(sharedBoard), true);
-//			board.whiteboardFromString(getBoardName(sharedBoard), sharedBoard);
-//			sharingPeers.add(sharedBoard);
+
+			sharingPeers.add(sharedBoard);
 			addBoard(board, false);
 		});
 	}
@@ -448,27 +467,43 @@ public class WhiteboardApp {
 		log.info("selected board: "+selectedBoard.getName());
 
 		if(selectedBoard.isRemote()){
-			String peerIP = getIP(selectedBoard.getName());
-			int peerServerPort = getPort(selectedBoard.getName());
-			String boardID = getBoardIdAndData(selectedBoard.getName());
+			String sharedBoardName = selectedBoard.getName();
+			String peerIP = getIP(sharedBoardName);
+			int peerServerPort = getPort(sharedBoardName);
+			String boardID = getBoardIdAndData(sharedBoardName);
 
 			ClientManager clientManager = null;
 			try {
 				log.info("try to connect");
 				log.info(ANSI_GREEN + boardID + ANSI_RESET);
 				clientManager = peerManager.connect(peerServerPort, peerIP);
-			} catch (InterruptedException | UnknownHostException e) {
-				e.printStackTrace();
-			}
-			try {
-				OutputStream out = new FileOutputStream(boardID);
 				clientManager.on(PeerManager.peerStarted, (args)->{
 					log.info(ANSI_YELLOW + "how are you doing?" + ANSI_RESET);
+					Endpoint endpoint = (Endpoint)args[0];
+					endpoint
+							.on(boardData, (args2)->{
+								String boardName = getBoardName((String)args2[0]);
+								String path = getBoardPaths((String)args2[0]);
+								long version = getBoardVersion((String)args2[0]);
+								log.info(ANSI_CYAN+ "current version = " + selectedBoard.getVersion()+" new version = " + version + ANSI_RESET);
+								log.info(ANSI_RED + "get board data = " + (String)args2[0] + ANSI_RESET);
+
+								selectedBoard.whiteboardFromString(boardName, version + "%" + path);
+								selectedBoard.draw(drawArea);
+							})
+							.on(boardError, (args2)->{
+
+							});
+					endpoint.emit(getBoardData, sharedBoardName);
 				});
-				clientManager.start();
-			} catch (FileNotFoundException e) {
+			} catch (UnknownHostException e) {
+				e.printStackTrace();
+			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
+
+			clientManager.start();
+
 		}
 	}
 	
@@ -482,6 +517,7 @@ public class WhiteboardApp {
         	selectedBoard.setShared(share);
 
         	if(share) {
+        		sharedBoards.add(selectedBoard.toString());
 				endpoint.emit(WhiteboardServer.shareBoard, selectedBoard.toString());
 			} else {
 				endpoint.emit(WhiteboardServer.unshareBoard, selectedBoard.toString());
