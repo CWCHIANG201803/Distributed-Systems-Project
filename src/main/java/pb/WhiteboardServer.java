@@ -92,6 +92,9 @@ public class WhiteboardServer {
 	//all the peers
 	private static Map<String, Endpoint> clients = new HashMap<>();
 
+	//all the sharing boards
+	private static ArrayList<String> sharingBoards = new ArrayList<String>();
+
 	//the boards that are shared by each peer
 	//String: board name
 	//Endpoint: peers
@@ -107,6 +110,15 @@ public class WhiteboardServer {
 				if(!client.equals(sharer)) {
 					sessions.get(client).emit(event, msg);
 				}
+			}
+		}
+	}
+
+	private static void sendSharingPeer(Endpoint endpoint) {
+		int size = sharingBoards.size();
+		if(size > 0) {
+			for(int i = 0; i < size; i++) {
+				endpoint.emit(sharingBoard, sharingBoards.get(i));
 			}
 		}
 	}
@@ -174,18 +186,21 @@ public class WhiteboardServer {
 					Endpoint endpoint = (Endpoint)arg[0];
 					log.info("Client session started: " + endpoint.getOtherEndpointId());
 					clients.put(endpoint.getOtherEndpointId(), endpoint);
+					sendSharingPeer(endpoint);
 
 					endpoint
 							.on(shareBoard,(Args)->{
 								String sharedBoard = (String)Args[0];
 								//log.info(ANSI_BLUE +"Received share request " + sharedBoard + ANSI_RESET);
 								String eventRaiser = endpoint.getOtherEndpointId();
+								sharingBoards.add(sharedBoard);
 								broadcast(new ArrayList<>(clients.keySet()), clients, eventRaiser, sharingBoard, sharedBoard);
 							})
 							.on(unshareBoard, (Args)->{
 								String sharedBoard = (String)Args[0];
 								//log.info(ANSI_BLUE +"Received unshare request " + sharedBoard + ANSI_RESET);
 								String eventRaiser = endpoint.getOtherEndpointId();
+								sharingBoards.remove(sharedBoard);
 								broadcast(new ArrayList<>(clients.keySet()), clients, eventRaiser, unsharingBoard, sharedBoard);
 							});
 				});
