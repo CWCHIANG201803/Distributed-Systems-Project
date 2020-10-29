@@ -182,9 +182,9 @@ public class WhiteboardApp {
 	boolean modifyingCheckBox=false;
 
 	static List<String> sharedBoards = new ArrayList<>();
+	static Map<String, Endpoint> sessions = new HashMap<>();
 
 	PeerManager peerManager = null;
-//	ClientManager clientManager = null;
 	Endpoint endpoint = null;
 	ArrayList<String> sharingPeers = new ArrayList<String>();
 	/**
@@ -197,14 +197,39 @@ public class WhiteboardApp {
 		peerManager = new PeerManager(peerPort);
 		peerManager
 				.on(PeerManager.peerStarted, (args) -> {
-					Endpoint endpoint = (Endpoint)args[0];
-					log.info(ANSI_RED+ "connection from peer: " + endpoint.getOtherEndpointId() + ANSI_RESET);
-					endpoint
-							.on(getBoardData, (args2)->{
-								log.info(ANSI_YELLOW + "try to query data" + ANSI_RESET);
-								String sharedBoardData = selectedBoard.toString();
-								endpoint.emit(boardData, sharedBoardData);
+					Endpoint endpt = (Endpoint)args[0];
+					sessions.put(endpt.getOtherEndpointId(), endpt);
 
+					log.info(ANSI_GREEN + "connecting from peer: " + endpt.getOtherEndpointId() + ANSI_RESET);
+					endpt
+							.on(WhiteboardApp.getBoardData,(arg)->{
+								String boardName = (String)arg[0];
+								onGetBoard(endpt, boardName);
+								onBoardListen(endpt, boardName);
+							})
+							.on(WhiteboardApp.listenBoard,(arg)->{
+								String boardToListen = (String)arg[0];
+								onBoardListen(endpt,boardToListen);
+							})
+							.on(WhiteboardApp.unlistenBoard,(arg)->{
+								String boardNotToListen = (String)arg[0];
+								onBoardUnListen(endpt, boardNotToListen);
+							})
+							.on(WhiteboardApp.boardPathUpdate, (arg)->{
+								String updateData = (String)arg[0];
+								log.info(ANSI_YELLOW + updateData + ANSI_RESET);
+								onBoardPath(endpoint,updateData);
+
+								for(var x : sessions.keySet()){
+									sessions.get(x).emit(boardPathAccepted, updateData);
+								}
+
+							})
+							.on(WhiteboardApp.boardUndoUpdate, (arg)->{
+								endpt.emit(WhiteboardApp.boardUndoAccepted, "");
+							})
+							.on(WhiteboardApp.boardClearUpdate, (arg)->{
+								endpt.emit(WhiteboardApp.boardClearAccepted, "");
 							});
 				})
 				.on(PeerManager.peerStopped, (args)->{
@@ -227,8 +252,17 @@ public class WhiteboardApp {
 			log.info("connecting to whiteboard server");
 			// todo: ask the server for the shared board
 			endpoint = (Endpoint)args[0];
-			onShareBoard(endpoint);
-			onUnshareBoard(endpoint);
+			endpoint
+					.on(WhiteboardServer.sharingBoard,(arg)->{
+						String sharedBoard = (String)arg[0];
+						onShareBoard(sharedBoard);
+					})
+					.on(WhiteboardServer.unsharingBoard, (arg)->{
+						String unsharedBoard = (String)arg[0];
+						onUnshareBoard(unsharedBoard);
+					});
+
+
 		});
 
 		this.peerport = InetAddress.getLoopbackAddress().getHostAddress() + ":" + peerPort;
@@ -244,7 +278,14 @@ public class WhiteboardApp {
 		clientManager.start();
 		clientManager.join();
 	}
-	
+
+	private void onGetBoard(Endpoint endpoint, String boardName) {
+		log.info(ANSI_YELLOW + boardName + ANSI_RESET);
+		String sharedBoardData = whiteboards.get(boardName).toString();
+		endpoint.emit(boardData, sharedBoardData);
+	}
+
+
 	/******
 	 * 
 	 * Utility methods to extract fields from argument strings.
@@ -329,26 +370,53 @@ public class WhiteboardApp {
 	
 	// From whiteboard server
 	//we should create a global clientManager but not endpoint?
-	private void onShareBoard(Endpoint endpoint){
-		endpoint.on(WhiteboardServer.sharingBoard, (Args)->{
-			String sharedBoard = (String)Args[0];
-			log.info(ANSI_CYAN + getBoardName(sharedBoard) + ANSI_RESET);
-			Whiteboard board = new Whiteboard(getBoardName(sharedBoard), true);
 
-			sharingPeers.add(sharedBoard);
-			addBoard(board, false);
-		});
+	private void onBoardListen(Endpoint endpoint, String boardToListen){
+		log.info(ANSI_GREEN + boardToListen + ANSI_RESET);
 	}
 
-	private void onUnshareBoard(Endpoint endpoint) {
-		endpoint.on(WhiteboardServer.unsharingBoard, (Args)->{
-			String sharedBoard = (String)Args[0];
-			log.info(ANSI_CYAN + getBoardName(sharedBoard) + ANSI_RESET);
-			deleteBoard(getBoardName(sharedBoard));
-		});
+	private void onBoardUnListen(Endpoint endpoint, String boardNotToListen) {
+		log.info(ANSI_GREEN + boardNotToListen + ANSI_RESET);
 	}
+
+	private void onBoardPath(Endpoint endpoint, String boardData){
+		log.info(ANSI_CYAN + "get board data : " + boardData);
+
+		String boardName = getBoardName(boardData);
+		String path = getBoardPaths(boardData);
+		long version = getBoardVersion(boardData);
+		selectedBoard.whiteboardFromString(boardName, version + "%" + path);
+		selectedBoard.draw(drawArea);
+
+	}
+
+	private void onShareBoard(String sharedBoard){
+		log.info(ANSI_CYAN + getBoardName(sharedBoard) + ANSI_RESET);
+		Whiteboard board = new Whiteboard(getBoardName(sharedBoard), true);
+
+		sharingPeers.add(sharedBoard);
+		addBoard(board, false);
+	}
+
+	private void onUnshareBoard(String unsharedBoard) {
+		log.info(ANSI_CYAN + getBoardName(unsharedBoard) + ANSI_RESET);
+		deleteBoard(getBoardName(unsharedBoard));
+	}
+
+	private void onBoardData(String data){
+		log.info(ANSI_YELLOW + data + ANSI_RESET);
+		String boardName = getBoardName(data);
+		String path = getBoardPaths(data);
+		long version = getBoardVersion(data);
+		selectedBoard.whiteboardFromString(boardName, version + "%" + path);
+		selectedBoard.draw(drawArea);
+
+	}
+
+
 
 	// From whiteboard peer
+
 
 	
 	/******
@@ -411,6 +479,7 @@ public class WhiteboardApp {
 	 * @param currentPath
 	 */
 	public void pathCreatedLocally(WhiteboardPath currentPath) {
+		// yes, path update event comes from here
 		if(selectedBoard!=null) {
 			if(!selectedBoard.addPath(currentPath,selectedBoard.getVersion())) {
 				// some other peer modified the board in between
@@ -418,6 +487,16 @@ public class WhiteboardApp {
 			} else {
 				// was accepted locally, so do remote stuff if needed
 				
+				String shareBoardData = selectedBoard.toString();
+				log.info(ANSI_CYAN + (selectedBoard.isRemote() ? "remote" : "local") + ANSI_RESET);
+				if(selectedBoard.isRemote()){
+					String receiverInfo = getIP(shareBoardData);
+					endpoint.emit(WhiteboardApp.boardPathUpdate, shareBoardData);
+				}else{
+					for(var x : sessions.keySet()){
+						sessions.get(x).emit(boardPathAccepted, shareBoardData);
+					}
+				}
 			}
 		} else {
 			log.severe("path created without a selected board: "+currentPath);
@@ -467,10 +546,12 @@ public class WhiteboardApp {
 		log.info("selected board: "+selectedBoard.getName());
 
 		if(selectedBoard.isRemote()){
-			String sharedBoardName = selectedBoard.getName();
-			String peerIP = getIP(sharedBoardName);
-			int peerServerPort = getPort(sharedBoardName);
-			String boardID = getBoardIdAndData(sharedBoardName);
+			String selectedBoardName = selectedBoard.getName();
+			endpoint.emit(listenBoard, selectedBoardName);
+
+			String peerIP = getIP(selectedBoardName);
+			int peerServerPort = getPort(selectedBoardName);
+			String boardID = getBoardIdAndData(selectedBoardName);
 
 			ClientManager clientManager = null;
 			try {
@@ -478,23 +559,18 @@ public class WhiteboardApp {
 				log.info(ANSI_GREEN + boardID + ANSI_RESET);
 				clientManager = peerManager.connect(peerServerPort, peerIP);
 				clientManager.on(PeerManager.peerStarted, (args)->{
-					log.info(ANSI_YELLOW + "how are you doing?" + ANSI_RESET);
-					Endpoint endpoint = (Endpoint)args[0];
+					this.endpoint = (Endpoint)args[0];
+					log.info(ANSI_YELLOW + "the endpoint id of the sharing cohort " + endpoint.getOtherEndpointId() + ANSI_RESET);
 					endpoint
-							.on(boardData, (args2)->{
-								String boardName = getBoardName((String)args2[0]);
-								String path = getBoardPaths((String)args2[0]);
-								long version = getBoardVersion((String)args2[0]);
-								log.info(ANSI_CYAN+ "current version = " + selectedBoard.getVersion()+" new version = " + version + ANSI_RESET);
-								log.info(ANSI_RED + "get board data = " + (String)args2[0] + ANSI_RESET);
-
-								selectedBoard.whiteboardFromString(boardName, version + "%" + path);
-								selectedBoard.draw(drawArea);
+							.on(boardData, (args1)->{
+								String boardData = (String)args1[0];
+								onBoardData(boardData);
 							})
-							.on(boardError, (args2)->{
-
+							.on(WhiteboardApp.boardPathAccepted, (args1) -> {
+								onBoardPath(endpoint, (String)args1[0]);
 							});
-					endpoint.emit(getBoardData, sharedBoardName);
+
+					endpoint.emit(getBoardData, selectedBoardName);
 				});
 			} catch (UnknownHostException e) {
 				e.printStackTrace();
