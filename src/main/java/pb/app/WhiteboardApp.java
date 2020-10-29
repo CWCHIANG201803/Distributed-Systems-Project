@@ -201,7 +201,7 @@ public class WhiteboardApp {
 					sessions.put(endpt.getOtherEndpointId(), endpt);
 
 					log.info(ANSI_GREEN + "connecting from peer: " + endpt.getOtherEndpointId() + ANSI_RESET);
-					endpt
+					endpt 
 							.on(WhiteboardApp.getBoardData,(arg)->{
 								String boardName = (String)arg[0];
 								onGetBoard(endpt, boardName);
@@ -219,21 +219,30 @@ public class WhiteboardApp {
 								String updateData = (String)arg[0];
 								log.info(ANSI_YELLOW + updateData + ANSI_RESET);
 								onBoardPath(endpoint,updateData);
-
 								for(var x : sessions.keySet()){
 									sessions.get(x).emit(boardPathAccepted, updateData);
 								}
-
 							})
 							.on(WhiteboardApp.boardUndoUpdate, (arg)->{
-								endpt.emit(WhiteboardApp.boardUndoAccepted, "");
+								String updateData = (String)arg[0];
+								log.info(ANSI_YELLOW + updateData + ANSI_RESET);
+								onBoardUndo(updateData);
+								for(var x : sessions.keySet()){
+									sessions.get(x).emit(boardUndoAccepted, updateData);
+								}
 							})
 							.on(WhiteboardApp.boardClearUpdate, (arg)->{
-								endpt.emit(WhiteboardApp.boardClearAccepted, "");
+								String updateData = (String)arg[0];
+								log.info(ANSI_YELLOW + updateData + ANSI_RESET);
+								onBoardClear(updateData);
+								for(var x : sessions.keySet()){
+									sessions.get(x).emit(boardClearAccepted, updateData);
+								}
 							});
 				})
 				.on(PeerManager.peerStopped, (args)->{
-
+					// Endpoint endpt = (Endpoint)args[0];
+					// sessions.remove(endpt.getOtherEndpointId());
 				})
 				.on(PeerManager.peerError, (args)->{
 
@@ -261,8 +270,6 @@ public class WhiteboardApp {
 						String unsharedBoard = (String)arg[0];
 						onUnshareBoard(unsharedBoard);
 					});
-
-
 		});
 
 		this.peerport = InetAddress.getLoopbackAddress().getHostAddress() + ":" + peerPort;
@@ -386,8 +393,27 @@ public class WhiteboardApp {
 		String path = getBoardPaths(boardData);
 		long version = getBoardVersion(boardData);
 		selectedBoard.whiteboardFromString(boardName, version + "%" + path);
-		selectedBoard.draw(drawArea);
+		drawSelectedWhiteboard();
+	}
 
+	private void onBoardClear(String boardData) {
+		log.info(ANSI_CYAN + "get board data : " + boardData);
+
+		String boardName = getBoardName(boardData);
+		String path = getBoardPaths(boardData);
+		long version = getBoardVersion(boardData);
+		selectedBoard.whiteboardFromString(boardName, version + "%" + path);
+		drawSelectedWhiteboard();
+	}
+
+	private void onBoardUndo(String boardData) {
+		log.info(ANSI_CYAN + "get board data : " + boardData);
+
+		String boardName = getBoardName(boardData);
+		String path = getBoardPaths(boardData);
+		long version = getBoardVersion(boardData);
+		selectedBoard.whiteboardFromString(boardName, version + "%" + path);
+		drawSelectedWhiteboard();
 	}
 
 	private void onShareBoard(String sharedBoard){
@@ -409,8 +435,7 @@ public class WhiteboardApp {
 		String path = getBoardPaths(data);
 		long version = getBoardVersion(data);
 		selectedBoard.whiteboardFromString(boardName, version + "%" + path);
-		selectedBoard.draw(drawArea);
-
+		drawSelectedWhiteboard();
 	}
 
 
@@ -513,8 +538,17 @@ public class WhiteboardApp {
 				drawSelectedWhiteboard();
 			} else {
 				// was accepted locally, so do remote stuff if needed
-				
-				drawSelectedWhiteboard();
+				String shareBoardData = selectedBoard.toString();
+				log.info(ANSI_CYAN + (selectedBoard.isRemote() ? "remote" : "local") + ANSI_RESET);
+				if(selectedBoard.isRemote()){
+					String receiverInfo = getIP(shareBoardData);
+					endpoint.emit(WhiteboardApp.boardClearUpdate, shareBoardData);
+				}else{
+					for(var x : sessions.keySet()){
+						sessions.get(x).emit(boardClearAccepted, shareBoardData);
+					}
+					drawSelectedWhiteboard();
+				}
 			}
 		} else {
 			log.severe("cleared without a selected board");
@@ -530,8 +564,17 @@ public class WhiteboardApp {
 				// some other peer modified the board in between
 				drawSelectedWhiteboard();
 			} else {
-				
-				drawSelectedWhiteboard();
+				String shareBoardData = selectedBoard.toString();
+				log.info(ANSI_CYAN + (selectedBoard.isRemote() ? "remote" : "local") + ANSI_RESET);
+				if(selectedBoard.isRemote()){
+					String receiverInfo = getIP(shareBoardData);
+					endpoint.emit(WhiteboardApp.boardUndoUpdate, shareBoardData);
+				}else{
+					for(var x : sessions.keySet()){
+						sessions.get(x).emit(boardUndoAccepted, shareBoardData);
+					}
+					drawSelectedWhiteboard();
+				}
 			}
 		} else {
 			log.severe("undo without a selected board");
@@ -566,8 +609,14 @@ public class WhiteboardApp {
 								String boardData = (String)args1[0];
 								onBoardData(boardData);
 							})
-							.on(WhiteboardApp.boardPathAccepted, (args1) -> {
+							.on(WhiteboardApp.boardPathAccepted, (args1)->{
 								onBoardPath(endpoint, (String)args1[0]);
+							})
+							.on(WhiteboardApp.boardClearAccepted, (args1)->{
+								onBoardClear((String)args1[0]);
+							})
+							.on(WhiteboardApp.boardUndoAccepted, (args1)->{
+								onBoardUndo((String)args1[0]);
 							});
 
 					endpoint.emit(getBoardData, selectedBoardName);

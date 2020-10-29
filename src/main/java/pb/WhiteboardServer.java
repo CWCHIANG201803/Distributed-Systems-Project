@@ -203,6 +203,10 @@ public class WhiteboardServer {
 								sharingBoards.remove(sharedBoard);
 								broadcast(new ArrayList<>(clients.keySet()), clients, eventRaiser, unsharingBoard, sharedBoard);
 							});
+				})
+				.on(ServerManager.sessionStopped, (arg)->{
+					// Endpoint endpoint = (Endpoint)arg[0];
+					// clients.remove(endpoint.getOtherEndpointId());
 				});
         
         // start up the server
