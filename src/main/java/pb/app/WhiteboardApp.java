@@ -186,6 +186,7 @@ public class WhiteboardApp {
 
 	PeerManager peerManager = null;
 	Endpoint endpoint = null;
+	ClientManager clientManager = null;
 	ArrayList<String> sharingPeers = new ArrayList<String>();
 	/**
 	 * Initialize the white board app.
@@ -255,7 +256,7 @@ public class WhiteboardApp {
 				});
 		peerManager.start();
 
-		ClientManager clientManager = peerManager.connect(whiteboardServerPort, whiteboardServerHost);
+		clientManager = peerManager.connect(whiteboardServerPort, whiteboardServerHost);
 
 		clientManager.on(PeerManager.peerStarted, (args)->{
 			log.info("connecting to whiteboard server");
@@ -664,6 +665,8 @@ public class WhiteboardApp {
     	whiteboards.values().forEach((whiteboard)->{
     		
     	});
+		clientManager.shutdown();
+		peerManager.shutdown();
 	}
 	
 	
