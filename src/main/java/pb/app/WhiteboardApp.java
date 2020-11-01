@@ -393,8 +393,10 @@ public class WhiteboardApp {
 		String boardName = getBoardName(boardData);
 		String path = getBoardPaths(boardData);
 		long version = getBoardVersion(boardData);
-		selectedBoard.whiteboardFromString(boardName, version + "%" + path);
-		drawSelectedWhiteboard();
+		if(boardName.equals(selectedBoard.getName())){
+			selectedBoard.whiteboardFromString(boardName, version + "%" + path);
+			drawSelectedWhiteboard();
+		}
 	}
 
 	private void onBoardClear(String boardData) {
