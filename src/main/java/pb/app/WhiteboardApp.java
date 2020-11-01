@@ -620,6 +620,10 @@ public class WhiteboardApp {
 							})
 							.on(WhiteboardApp.boardUndoAccepted, (args1)->{
 								onBoardUndo((String)args1[0]);
+							})
+							.on(WhiteboardApp.boardDeleted, (args1)->{
+								Endpoint endpt = (Endpoint)args1[0];
+								sessions.remove(endpt.getOtherEndpointId());
 							});
 
 					endpoint.emit(getBoardData, selectedBoardName);
@@ -660,13 +664,19 @@ public class WhiteboardApp {
 	 */
 	public void guiShutdown() {
 		// do some final cleanup
+		for(Whiteboard whiteboard: whiteboards.values()){
+			if(whiteboard.isShared()) {
+				endpoint.emit(WhiteboardServer.unshareBoard, whiteboard.toString());
+			}
+		}
+		for(Endpoint endpt: sessions.values()) {
+			endpt.emit(boardDeleted, endpt);
+			endpt.close();
+		}
 		HashSet<Whiteboard> existingBoards= new HashSet<>(whiteboards.values());
 		existingBoards.forEach((board)->{
 			deleteBoard(board.getName());
 		});
-    	whiteboards.values().forEach((whiteboard)->{
-    		
-    	});
 		clientManager.shutdown();
 		peerManager.shutdown();
 	}
