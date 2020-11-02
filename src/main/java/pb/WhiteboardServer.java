@@ -114,6 +114,33 @@ public class WhiteboardServer {
 		}
 	}
 
+	private static void displayClientAlive(){
+
+		if(clients.size()>0){
+			log.info(ANSI_GREEN + "--------------------start--------------------" + ANSI_RESET);
+			log.info(ANSI_GREEN + "The following is the client alive" + ANSI_RESET);
+			for(var client : clients.keySet()){
+				log.info(ANSI_CYAN + client + ANSI_RESET);
+			}
+			log.info(ANSI_GREEN + "--------------------end--------------------" + ANSI_RESET);
+		}else{
+			log.info(ANSI_RED + "oh.. it is empty now.." + ANSI_RESET);
+		}
+	}
+
+	private static void displaySharedBoards(){
+		if(clients.size()>0){
+			log.info(ANSI_CYAN + "--------------------start--------------------" + ANSI_RESET);
+			log.info(ANSI_CYAN + "The following are boards shared" + ANSI_RESET);
+			for(var sharingBoard : sharingBoards){
+				log.info(ANSI_YELLOW + sharingBoard + ANSI_RESET);
+			}
+			log.info(ANSI_CYAN + "--------------------end--------------------" + ANSI_RESET);
+		}else{
+			log.info(ANSI_RED + "oh.. it is empty now.." + ANSI_RESET);
+		}
+	}
+
 	private static void sendSharingPeer(Endpoint endpoint) {
 		int size = sharingBoards.size();
 		if(size > 0) {
@@ -184,8 +211,10 @@ public class WhiteboardServer {
 				})
 				.on(ServerManager.sessionStarted, (arg)->{
 					Endpoint endpoint = (Endpoint)arg[0];
-					log.info("Client session started: " + endpoint.getOtherEndpointId());
+					log.info(ANSI_GREEN + "Client session started: " + endpoint.getOtherEndpointId() + ANSI_RESET);
 					clients.put(endpoint.getOtherEndpointId(), endpoint);
+					displayClientAlive();
+
 					sendSharingPeer(endpoint);
 
 					endpoint
@@ -197,16 +226,26 @@ public class WhiteboardServer {
 								broadcast(new ArrayList<>(clients.keySet()), clients, eventRaiser, sharingBoard, sharedBoard);
 							})
 							.on(unshareBoard, (Args)->{
-								String sharedBoard = (String)Args[0];
-								//log.info(ANSI_BLUE +"Received unshare request " + sharedBoard + ANSI_RESET);
+								String unSharedBoard = (String)Args[0];
+								log.info(ANSI_RED + "board not share " + unSharedBoard + ANSI_RESET);
+
 								String eventRaiser = endpoint.getOtherEndpointId();
-								sharingBoards.remove(sharedBoard);
-								broadcast(new ArrayList<>(clients.keySet()), clients, eventRaiser, unsharingBoard, sharedBoard);
+								sharingBoards.remove(unSharedBoard);
+								displaySharedBoards();
+								broadcast(new ArrayList<>(clients.keySet()), clients, eventRaiser, unsharingBoard, unSharedBoard);
 							});
 				})
 				.on(ServerManager.sessionStopped, (arg)->{
-					// Endpoint endpoint = (Endpoint)arg[0];
-					// clients.remove(endpoint.getOtherEndpointId());
+					Endpoint endpoint = (Endpoint)arg[0];
+					log.severe(ANSI_RED + "Client session ended: " + endpoint.getOtherEndpointId() + ANSI_RESET);
+					clients.remove(endpoint.getOtherEndpointId());
+					displayClientAlive();
+				})
+				.on(ServerManager.sessionError,(arg)->{
+					Endpoint endpoint = (Endpoint)arg[0];
+					log.severe(ANSI_YELLOW + "client " + endpoint.getOtherEndpointId() + " stopped" + ANSI_RESET);
+
+					clients.remove(endpoint.getOtherEndpointId());
 				});
         
         // start up the server

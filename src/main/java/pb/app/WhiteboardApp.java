@@ -6,6 +6,7 @@ import pb.managers.IOThread;
 import pb.managers.PeerManager;
 import pb.managers.ServerManager;
 import pb.managers.endpoint.Endpoint;
+import pb.utils.Utils;
 
 import javax.swing.*;
 import java.awt.*;
@@ -285,6 +286,7 @@ public class WhiteboardApp {
 
 		clientManager.start();
 		clientManager.join();
+		Utils.getInstance().cleanUp();
 	}
 
 	private void onGetBoard(Endpoint endpoint, String boardName) {
@@ -388,7 +390,7 @@ public class WhiteboardApp {
 	}
 
 	private void onBoardPath(Endpoint endpoint, String boardData){
-		log.info(ANSI_CYAN + "get board data : " + boardData);
+		log.info(ANSI_CYAN + "get board data : " + boardData + ANSI_RESET);
 
 		String boardName = getBoardName(boardData);
 		String path = getBoardPaths(boardData);
@@ -460,7 +462,7 @@ public class WhiteboardApp {
 	 * Wait for the peer manager to finish all threads.
 	 */
 	public void waitToFinish() {
-		
+		Utils.getInstance().cleanUp();
 	}
 	
 	/**
@@ -599,7 +601,7 @@ public class WhiteboardApp {
 			int peerServerPort = getPort(selectedBoardName);
 			String boardID = getBoardIdAndData(selectedBoardName);
 
-			ClientManager clientManager = null;
+			clientManager = null;
 			try {
 				log.info("try to connect");
 				log.info(ANSI_GREEN + boardID + ANSI_RESET);
@@ -620,10 +622,6 @@ public class WhiteboardApp {
 							})
 							.on(WhiteboardApp.boardUndoAccepted, (args1)->{
 								onBoardUndo((String)args1[0]);
-							})
-							.on(WhiteboardApp.boardDeleted, (args1)->{
-								Endpoint endpt = (Endpoint)args1[0];
-								sessions.remove(endpt.getOtherEndpointId());
 							});
 
 					endpoint.emit(getBoardData, selectedBoardName);
@@ -664,21 +662,29 @@ public class WhiteboardApp {
 	 */
 	public void guiShutdown() {
 		// do some final cleanup
-		for(Whiteboard whiteboard: whiteboards.values()){
-			if(whiteboard.isShared()) {
-				endpoint.emit(WhiteboardServer.unshareBoard, whiteboard.toString());
-			}
-		}
-		for(Endpoint endpt: sessions.values()) {
-			endpt.emit(boardDeleted, endpt);
-			endpt.close();
-		}
+
 		HashSet<Whiteboard> existingBoards= new HashSet<>(whiteboards.values());
 		existingBoards.forEach((board)->{
+			if(board.isShared()){
+				board.setShared(false);
+				endpoint.emit(WhiteboardServer.unshareBoard, board.toString());
+			}
 			deleteBoard(board.getName());
 		});
-		clientManager.shutdown();
+
+		for(var session : sessions.keySet()){
+			sessions.get(session).close();
+			sessions.remove(endpoint.getOtherEndpointId());
+		}
+
+
+		whiteboards.values().forEach((whiteboard)->{
+    		
+    	});
+		clientManager = null;
+//		clientManager.shutdown();
 		peerManager.shutdown();
+		peerManager = null;
 	}
 	
 	
