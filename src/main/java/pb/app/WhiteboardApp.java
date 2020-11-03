@@ -459,9 +459,10 @@ public class WhiteboardApp {
 	private void onUnshareBoard(String unsharedBoard) {
 		log.info(ANSI_CYAN + getBoardName(unsharedBoard) + ANSI_RESET);
 		String sharer = getIP(unsharedBoard)+":"+getPort(unsharedBoard);
-
-		sharingBoards.get(sharer).remove(unsharedBoard);
-		deleteBoard(getBoardName(unsharedBoard));
+		if(sharingBoards.containsKey(sharer)){
+			sharingBoards.get(sharer).remove(unsharedBoard);
+			deleteBoard(getBoardName(unsharedBoard));
+		}
 	}
 
 	private void onBoardData(Endpoint endpoint, String data){
