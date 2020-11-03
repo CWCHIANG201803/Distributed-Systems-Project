@@ -179,7 +179,8 @@ public class WhiteboardApp {
 	Map<String, List<String>> boardListeningLists = new HashMap<>();
 
 	PeerManager peerManager = null;
-	Endpoint endpoint = null;
+	Endpoint endpointToSharePeer = null;
+	Endpoint endpointToWhiteboardServer = null;
 
 	Map<String, List<String>> sharingBoards = new HashMap<>();
 
@@ -265,8 +266,9 @@ public class WhiteboardApp {
 		clientManager.on(PeerManager.peerStarted, (args)->{
 			log.info("connecting to whiteboard server");
 			// todo: ask the server for the shared board
-			endpoint = (Endpoint)args[0];
-			endpoint
+			this.endpointToWhiteboardServer = (Endpoint)args[0];
+			log.info(ANSI_YELLOW + "endpoint id = " + endpointToWhiteboardServer.getOtherEndpointId() + ANSI_RESET);
+			endpointToWhiteboardServer
 					.on(WhiteboardServer.sharingBoard,(arg)->{
 						String sharedBoard = (String)arg[0];
 						onShareBoard(sharedBoard);
@@ -549,7 +551,7 @@ public class WhiteboardApp {
 				log.info(ANSI_CYAN + (selectedBoard.isRemote() ? "remote" : "local") + ANSI_RESET);
 
 				if(selectedBoard.isRemote()){		// receiver updates, so send an event to the sharer
-					endpoint.emit(boardPathUpdate, shareBoardData);
+					endpointToSharePeer.emit(boardPathUpdate, shareBoardData);
 				}else{	// sharer updates
 					String sharedBoardName = selectedBoard.getName();
 					boolean hasListeners = boardListeningLists.get(sharedBoardName)!=null
@@ -582,7 +584,7 @@ public class WhiteboardApp {
 				log.info(ANSI_CYAN + (selectedBoard.isRemote() ? "remote" : "local") + ANSI_RESET);
 
 				if(selectedBoard.isRemote()){
-					endpoint.emit(boardClearUpdate, shareBoardData);
+					endpointToSharePeer.emit(boardClearUpdate, shareBoardData);
 				}else{
 					String sharedBoardName = selectedBoard.getName();
 					boolean hasListeners = boardListeningLists.get(sharedBoardName)!=null
@@ -613,7 +615,7 @@ public class WhiteboardApp {
 				String shareBoardData = selectedBoard.toString();
 				log.info(ANSI_CYAN + (selectedBoard.isRemote() ? "remote" : "local") + ANSI_RESET);
 				if(selectedBoard.isRemote()){
-					endpoint.emit(boardUndoUpdate, shareBoardData);
+					endpointToSharePeer.emit(boardUndoUpdate, shareBoardData);
 				}else{
 					String sharedBoardName = selectedBoard.getName();
 					boolean hasListeners = boardListeningLists.get(sharedBoardName)!=null
@@ -637,7 +639,7 @@ public class WhiteboardApp {
 	 */
 	public void selectedABoard() {
 		drawSelectedWhiteboard();
-		log.info("selected board: "+selectedBoard.getName());
+		log.info("selected board: "+selectedBoard.getName() + "is it shared ? " + selectedBoard.isShared());
 
 		if(selectedBoard.isRemote()){
 			String selectedBoardName = selectedBoard.getName();
@@ -652,12 +654,12 @@ public class WhiteboardApp {
 				ClientManager clientMangr = peerManager.connect(peerServerPort, peerIP);
 				clientMangr
 						.on(PeerManager.peerStarted, (args)->{
-							this.endpoint = (Endpoint)args[0];
-							log.info(ANSI_YELLOW + "the endpoint id of the sharing cohort " + endpoint.getOtherEndpointId() + ANSI_RESET);
-							endpoint
+							endpointToSharePeer = (Endpoint)args[0];
+							log.info(ANSI_YELLOW + "the endpoint id of the sharing cohort " + endpointToSharePeer.getOtherEndpointId() + ANSI_RESET);
+							endpointToSharePeer
 									.on(boardData, (args1)->{
 										String boardDataToRender = (String)args1[0];
-										onBoardData(endpoint, boardDataToRender);
+										onBoardData(endpointToSharePeer, boardDataToRender);
 									})
 									.on(boardPathAccepted, (args1)->{
 										String boardDataToRender =(String)args1[0];
@@ -683,7 +685,7 @@ public class WhiteboardApp {
 									.on(boardError, (args1)->{
 										String boardError = (String)args1[0];
 									});
-							endpoint.emit(getBoardData, selectedBoardName);
+							endpointToSharePeer.emit(getBoardData, selectedBoardName);
 						})
 						.on(PeerManager.peerStopped, (args)->{
 							Endpoint endpoint = (Endpoint)args[0];
@@ -706,11 +708,14 @@ public class WhiteboardApp {
 	 */
 	public void setShare(boolean share) {
 		if(selectedBoard!=null) {
+			log.info(ANSI_GREEN + "I would like to share this board to others!" + ANSI_RESET);
         	selectedBoard.setShared(share);
+
         	if(share) {
-				endpoint.emit(WhiteboardServer.shareBoard, selectedBoard.toString());
+        		log.info("send share event to server");
+				endpointToWhiteboardServer.emit(WhiteboardServer.shareBoard, selectedBoard.toString());
 			} else {
-				endpoint.emit(WhiteboardServer.unshareBoard, selectedBoard.toString());
+				endpointToWhiteboardServer.emit(WhiteboardServer.unshareBoard, selectedBoard.toString());
 			}
 		} else {
         	log.severe("there is no selected board");
@@ -724,7 +729,7 @@ public class WhiteboardApp {
 		// do some final cleanup
 		log.info(ANSI_CYAN + " number of sharing board: " + boardListeningLists.size() + ANSI_RESET);
 		for(var whiteboard : whiteboards.values()){
-			endpoint.emit(WhiteboardServer.unshareBoard, whiteboard.getName());
+			endpointToWhiteboardServer.emit(WhiteboardServer.unshareBoard, whiteboard.getName());
 
 			sessions.values().forEach((endpt)->{
 				if(whiteboard.isShared()) {
