@@ -15,6 +15,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
 import pb.app.Whiteboard;
+import pb.app.WhiteboardApp;
 import pb.managers.ServerManager;
 import pb.managers.IOThread;
 import pb.managers.endpoint.Endpoint;
@@ -93,8 +94,8 @@ public class WhiteboardServer {
 	//all the peers
 	private static Map<String, Endpoint> clients = new HashMap<>();
 
-	//all the sharing boards
-	private static Map<String, String> sharingBoards = new HashMap<>();
+	//all the sharing boards(sharer, sharingboards)
+	private static Map<String, List<String>> sharingBoards = new HashMap<>();
 
 	//the boards that are shared by each peer
 	//String: board name
@@ -130,20 +131,21 @@ public class WhiteboardServer {
 	}
 
 	private static void displaySharedBoards(){
-		if(clients.size()>0){
+		if(sharingBoards.size()>0){
 			log.info(ANSI_CYAN + "--------------------start--------------------" + ANSI_RESET);
 			log.info(ANSI_CYAN + "The following are boards shared" + ANSI_RESET);
-			for(var sharingBoard : sharingBoards.keySet()){
-				log.info(ANSI_YELLOW + sharingBoard + ANSI_RESET);
+			for(var sharer : sharingBoards.keySet()){
+				log.info(ANSI_YELLOW + sharer + " : " + sharingBoards.get(sharer) + ANSI_RESET);
 			}
 			log.info(ANSI_CYAN + "--------------------end--------------------" + ANSI_RESET);
 		}else{
-			log.info(ANSI_RED + "oh.. it is empty now.." + ANSI_RESET);
+			log.info(ANSI_RED + "oh.. no board to share now.." + ANSI_RESET);
 		}
 	}
 
 	private static void sendSharingPeer(Endpoint endpoint) {
-		for(var board : sharingBoards.values()){
+		for(var sharer : sharingBoards.keySet()){
+			for( var board : sharingBoards.get(sharer))
 			endpoint.emit(WhiteboardServer.sharingBoard, board);
 		}
 	}
@@ -160,6 +162,24 @@ public class WhiteboardServer {
 		log.info("size of structure" + clients.size());
 
 	}
+
+	public static void addShareBoard(String sharer, String boardToShare){
+		if(!sharingBoards.containsKey(sharer)){
+			sharingBoards.put(sharer, new ArrayList<>());
+		}
+		sharingBoards.get(sharer).add(boardToShare);
+	}
+	public static void removeShareBoard(String sharer, String sharingBoard){
+		if(!sharingBoards.containsKey(sharer))
+			return;
+
+		sharingBoards.get(sharer).remove(sharingBoard);
+
+		if(sharingBoards.get(sharer).isEmpty())
+			sharingBoards.remove(sharer);
+
+	}
+
 	
 	public static void main( String[] args ) throws IOException, InterruptedException
     {
@@ -217,18 +237,20 @@ public class WhiteboardServer {
 
 					endpoint
 							.on(shareBoard,(Args)->{
-								String sharedBoard = (String)Args[0];
+								String sharedBoard = WhiteboardApp.getBoardName((String)Args[0]);
 								//log.info(ANSI_BLUE +"Received share request " + sharedBoard + ANSI_RESET);
+								log.info(ANSI_BLUE +"Received share request " + sharedBoard + ANSI_RESET);
 								String eventRaiser = endpoint.getOtherEndpointId();
-								sharingBoards.put(eventRaiser, sharedBoard);
+
+								addShareBoard(eventRaiser, sharedBoard);
+								displaySharedBoards();
 								broadcast(new ArrayList<>(clients.keySet()), clients, eventRaiser, sharingBoard, sharedBoard);
 							})
 							.on(unshareBoard, (Args)->{
-								String unSharedBoard = (String)Args[0];
+								String unSharedBoard = WhiteboardApp.getBoardName((String)Args[0]);
 								log.info(ANSI_RED + "board not share " + unSharedBoard + ANSI_RESET);
-
 								String eventRaiser = endpoint.getOtherEndpointId();
-								sharingBoards.remove(unSharedBoard);
+								removeShareBoard(eventRaiser, unSharedBoard);
 								displaySharedBoards();
 								broadcast(new ArrayList<>(clients.keySet()), clients, eventRaiser, unsharingBoard, unSharedBoard);
 							});
