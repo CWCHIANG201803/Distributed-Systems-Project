@@ -734,8 +734,8 @@ public class WhiteboardApp {
 			sessions.values().forEach((endpt)->{
 				if(whiteboard.isShared()) {
 					endpt.emit(unlistenBoard, whiteboard.getName());
+					endpt.emit(boardDeleted, whiteboard.getName());
 				}
-				endpt.emit(boardDeleted, whiteboard.getName());
 			});
 		}
 		HashSet<Whiteboard> existingBoards= new HashSet<>(whiteboards.values());
