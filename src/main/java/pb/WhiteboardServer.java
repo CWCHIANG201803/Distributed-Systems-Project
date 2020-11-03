@@ -237,8 +237,7 @@ public class WhiteboardServer {
 
 					endpoint
 							.on(shareBoard,(Args)->{
-								String sharedBoard = WhiteboardApp.getBoardName((String)Args[0]);
-								//log.info(ANSI_BLUE +"Received share request " + sharedBoard + ANSI_RESET);
+								String sharedBoard = (String)Args[0];
 								log.info(ANSI_BLUE +"Received share request " + sharedBoard + ANSI_RESET);
 								String eventRaiser = endpoint.getOtherEndpointId();
 
@@ -247,7 +246,7 @@ public class WhiteboardServer {
 								broadcast(new ArrayList<>(clients.keySet()), clients, eventRaiser, sharingBoard, sharedBoard);
 							})
 							.on(unshareBoard, (Args)->{
-								String unSharedBoard = WhiteboardApp.getBoardName((String)Args[0]);
+								String unSharedBoard = (String)Args[0];
 								log.info(ANSI_RED + "board not share " + unSharedBoard + ANSI_RESET);
 								String eventRaiser = endpoint.getOtherEndpointId();
 								removeShareBoard(eventRaiser, unSharedBoard);

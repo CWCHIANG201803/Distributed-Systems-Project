@@ -244,14 +244,15 @@ public class WhiteboardApp {
 				.on(PeerManager.peerStopped, (args)->{
 					Endpoint endpoint = (Endpoint)args[0];
 					log.info("Disconnected from peer: " + endpoint.getOtherEndpointId());
-
+					sessions.remove(endpoint.getOtherEndpointId());
 					for(var board : boardListeningLists.keySet()){
 						boardListeningLists.get(board).remove(endpoint.getOtherEndpointId());
 					}
 					log.info(ANSI_BLUE + this.boardListeningLists + ANSI_RESET);
 				})
 				.on(PeerManager.peerError, (args)->{
-
+					Endpoint endpoint = (Endpoint)args[0];
+					sessions.remove(endpoint.getOtherEndpointId());
 				})
 				.on(PeerManager.peerServerManager, (args)->{
 					ServerManager serverManager = (ServerManager)args[0];
@@ -710,12 +711,13 @@ public class WhiteboardApp {
 		if(selectedBoard!=null) {
 			log.info(ANSI_GREEN + "I would like to share this board to others!" + ANSI_RESET);
         	selectedBoard.setShared(share);
+        	String targetBoard = selectedBoard.getName();
 
         	if(share) {
         		log.info("send share event to server");
-				endpointToWhiteboardServer.emit(WhiteboardServer.shareBoard, selectedBoard.toString());
+				endpointToWhiteboardServer.emit(WhiteboardServer.shareBoard, targetBoard);
 			} else {
-				endpointToWhiteboardServer.emit(WhiteboardServer.unshareBoard, selectedBoard.toString());
+				endpointToWhiteboardServer.emit(WhiteboardServer.unshareBoard, targetBoard);
 			}
 		} else {
         	log.severe("there is no selected board");
@@ -731,7 +733,7 @@ public class WhiteboardApp {
 		for(var whiteboard : whiteboards.values()){
 			endpointToWhiteboardServer.emit(WhiteboardServer.unshareBoard, whiteboard.getName());
 
-			sessions.values().forEach((endpt)->{
+			sessions.values().forEach(endpt->{
 				if(whiteboard.isShared()) {
 					endpt.emit(unlistenBoard, whiteboard.getName());
 					endpt.emit(boardDeleted, whiteboard.getName());
