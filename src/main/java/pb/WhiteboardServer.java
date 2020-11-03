@@ -14,6 +14,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
+import pb.app.Whiteboard;
 import pb.managers.ServerManager;
 import pb.managers.IOThread;
 import pb.managers.endpoint.Endpoint;
@@ -93,7 +94,7 @@ public class WhiteboardServer {
 	private static Map<String, Endpoint> clients = new HashMap<>();
 
 	//all the sharing boards
-	private static ArrayList<String> sharingBoards = new ArrayList<String>();
+	private static Map<String, String> sharingBoards = new HashMap<>();
 
 	//the boards that are shared by each peer
 	//String: board name
@@ -132,7 +133,7 @@ public class WhiteboardServer {
 		if(clients.size()>0){
 			log.info(ANSI_CYAN + "--------------------start--------------------" + ANSI_RESET);
 			log.info(ANSI_CYAN + "The following are boards shared" + ANSI_RESET);
-			for(var sharingBoard : sharingBoards){
+			for(var sharingBoard : sharingBoards.keySet()){
 				log.info(ANSI_YELLOW + sharingBoard + ANSI_RESET);
 			}
 			log.info(ANSI_CYAN + "--------------------end--------------------" + ANSI_RESET);
@@ -142,11 +143,8 @@ public class WhiteboardServer {
 	}
 
 	private static void sendSharingPeer(Endpoint endpoint) {
-		int size = sharingBoards.size();
-		if(size > 0) {
-			for(int i = 0; i < size; i++) {
-				endpoint.emit(sharingBoard, sharingBoards.get(i));
-			}
+		for(var board : sharingBoards.values()){
+			endpoint.emit(WhiteboardServer.sharingBoard, board);
 		}
 	}
 	
@@ -222,7 +220,7 @@ public class WhiteboardServer {
 								String sharedBoard = (String)Args[0];
 								//log.info(ANSI_BLUE +"Received share request " + sharedBoard + ANSI_RESET);
 								String eventRaiser = endpoint.getOtherEndpointId();
-								sharingBoards.add(sharedBoard);
+								sharingBoards.put(eventRaiser, sharedBoard);
 								broadcast(new ArrayList<>(clients.keySet()), clients, eventRaiser, sharingBoard, sharedBoard);
 							})
 							.on(unshareBoard, (Args)->{
@@ -237,15 +235,18 @@ public class WhiteboardServer {
 				})
 				.on(ServerManager.sessionStopped, (arg)->{
 					Endpoint endpoint = (Endpoint)arg[0];
+
 					log.severe(ANSI_RED + "Client session ended: " + endpoint.getOtherEndpointId() + ANSI_RESET);
 					clients.remove(endpoint.getOtherEndpointId());
+					sharingBoards.remove(endpoint.getOtherEndpointId());
 					displayClientAlive();
 				})
 				.on(ServerManager.sessionError,(arg)->{
 					Endpoint endpoint = (Endpoint)arg[0];
 					log.severe(ANSI_YELLOW + "client " + endpoint.getOtherEndpointId() + " stopped" + ANSI_RESET);
-
+					sharingBoards.remove(endpoint.getOtherEndpointId());
 					clients.remove(endpoint.getOtherEndpointId());
+					displayClientAlive();
 				});
         
         // start up the server
