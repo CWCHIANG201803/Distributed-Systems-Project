@@ -204,7 +204,6 @@ public class WhiteboardApp {
 				.on(PeerManager.peerStarted, (args) -> {
 					Endpoint endpt = (Endpoint)args[0];
 					sessions.put(endpt.getOtherEndpointId(), endpt);
-					log.info(ANSI_GREEN + "connecting from peer: " + endpt.getOtherEndpointId() + ANSI_RESET);
 					endpt 
 							.on(getBoardData,(arg)->{
 								String boardName = (String)arg[0];
@@ -212,7 +211,6 @@ public class WhiteboardApp {
 							})
 							.on(listenBoard,(arg)->{
 								String boardToListen = (String)arg[0];
-								log.info(ANSI_RED+boardToListen+ANSI_RESET);
 								onBoardListen(endpt, boardToListen);
 							})
 							.on(boardPathUpdate, (arg)->{
@@ -227,7 +225,6 @@ public class WhiteboardApp {
 							})
 							.on(boardUndoUpdate, (arg)->{
 								String updateData = (String)arg[0];
-								log.info(ANSI_YELLOW + updateData + ANSI_RESET);
 								onBoardUndo(updateData);
 
 								String targetBoard = getBoardName(updateData);
@@ -238,7 +235,6 @@ public class WhiteboardApp {
 							})
 							.on(boardClearUpdate, (arg)->{
 								String updateData = (String)arg[0];
-								log.info(ANSI_YELLOW + updateData + ANSI_RESET);
 								onBoardClear(updateData);
 
 								String targetBoard = getBoardName(updateData);
@@ -255,7 +251,6 @@ public class WhiteboardApp {
 					for(var board : boardListeningLists.keySet()){
 						boardListeningLists.get(board).remove(endpoint.getOtherEndpointId());
 					}
-					log.info(ANSI_BLUE + this.boardListeningLists + ANSI_RESET);
 				})
 				.on(PeerManager.peerError, (args)->{
 					Endpoint endpoint = (Endpoint)args[0];
@@ -281,7 +276,6 @@ public class WhiteboardApp {
 			log.info("connecting to whiteboard server");
 			// todo: ask the server for the shared board
 			this.endpointToWhiteboardServer = (Endpoint)args[0];
-			log.info(ANSI_YELLOW + "endpoint id = " + endpointToWhiteboardServer.getOtherEndpointId() + ANSI_RESET);
 			endpointToWhiteboardServer
 					.on(WhiteboardServer.sharingBoard,(arg)->{
 						String sharedBoard = (String)arg[0];
@@ -389,7 +383,6 @@ public class WhiteboardApp {
 	 * emits the content of the sharing board.
 	 */
 	private void onGetBoard(Endpoint endpoint, String boardName) {
-		log.info(ANSI_YELLOW + boardName + ANSI_RESET);
 		String sharedBoardData = whiteboards.get(boardName).toString();
 		endpoint.emit(boardData, sharedBoardData);
 	}
@@ -400,7 +393,6 @@ public class WhiteboardApp {
 	 * to tell the sharer that the receiver is listening to this whiteboard.
 	 */
 	private void onBoardData(Endpoint endpoint, String data){
-		log.info(ANSI_YELLOW + data + ANSI_RESET);
 		String boardName = getBoardName(data);
 		String path = getBoardPaths(data);
 		long version = getBoardVersion(data);
@@ -415,14 +407,12 @@ public class WhiteboardApp {
 	 * Called by the sharer to add a listener into the list of the sharing whiteboard.
 	 */
 	private void onBoardListen(Endpoint endpoint, String boardToListen){
-		log.info(ANSI_GREEN + "onBoardListen: " + boardToListen + ANSI_RESET);
 		if(!boardListeningLists.containsKey(boardToListen)){
 			boardListeningLists.put(boardToListen, new ArrayList<>());
 		}
 		String listener = endpoint.getOtherEndpointId();
 		boardListeningLists.get(boardToListen).add(listener);
 
-		log.info(ANSI_GREEN + boardListeningLists.get(boardToListen) + ANSI_RESET);
 
 	}
 
@@ -430,7 +420,6 @@ public class WhiteboardApp {
 	 * Called by the sharer to delete a listener from the list of the sharing whiteboard.
 	 */
 	private void onBoardUnListen(String boardNotToListen) {
-		log.info(ANSI_RED + "onBoardUnlisten: " + boardNotToListen + ANSI_RESET);
 		boardListeningLists.remove(boardNotToListen);
 	}
 
@@ -438,7 +427,6 @@ public class WhiteboardApp {
 	 * Called by the receiver to delete the board shared by the closing sharer.
 	 */
 	private void onBoardDeleted(String boardToDelete){
-		log.info(ANSI_RED + "onBoardDeleted: " + boardToDelete + ANSI_RESET);
 		deleteBoard(boardToDelete);
 	}
 
@@ -446,8 +434,6 @@ public class WhiteboardApp {
 	 * Called by receiver or sharer to update the path drew by the sharer or receiver.
 	 */
 	private void onBoardPath(String boardDataToRender){
-		log.info(ANSI_CYAN + "onBoardPath : " + boardDataToRender + ANSI_RESET);
-
 		String boardToUpdate = getBoardName(boardDataToRender);
 		String path = getBoardPaths(boardDataToRender);
 		long version = getBoardVersion(boardDataToRender);
@@ -463,8 +449,6 @@ public class WhiteboardApp {
 	 * Called by receiver or sharer to clear the path.
 	 */
 	private void onBoardClear(String boardDataToRender) {
-		log.info(ANSI_CYAN + "onBoardClear : " + boardDataToRender + ANSI_RESET);
-
 		String boardToUpdate = getBoardName(boardDataToRender);
 		String path = getBoardPaths(boardDataToRender);
 		long version = getBoardVersion(boardDataToRender);
@@ -480,8 +464,6 @@ public class WhiteboardApp {
 	 * Called by receiver or sharer to undo.
 	 */
 	private void onBoardUndo(String boardDataToRender) {
-		log.info(ANSI_CYAN + "get board data : " + boardDataToRender + ANSI_RESET);
-
 		String boardToUpdate = getBoardName(boardDataToRender);
 		String path = getBoardPaths(boardDataToRender);
 		long version = getBoardVersion(boardDataToRender);
@@ -496,7 +478,6 @@ public class WhiteboardApp {
 	// From whiteboard server
 
 	private void onShareBoard(String sharedBoard){
-		log.info(ANSI_CYAN + getBoardName(sharedBoard) + ANSI_RESET);
 		String sharer = getIP(sharedBoard)+":"+getPort(sharedBoard);
 
 		if(!sharingBoards.containsKey(sharer)) {
@@ -509,7 +490,6 @@ public class WhiteboardApp {
 	}
 
 	private void onUnshareBoard(String unsharedBoard) {
-		log.info(ANSI_CYAN + getBoardName(unsharedBoard) + ANSI_RESET);
 		String sharer = getIP(unsharedBoard)+":"+getPort(unsharedBoard);
 		if(sharingBoards.containsKey(sharer)){
 			sharingBoards.get(sharer).remove(unsharedBoard);
@@ -583,8 +563,6 @@ public class WhiteboardApp {
 			} else {
 				// was accepted locally, so do remote stuff if needed
 				String shareBoardData = selectedBoard.toString();
-				log.info(ANSI_CYAN + (selectedBoard.isRemote() ? "remote" : "local") + ANSI_RESET);
-
 				if(selectedBoard.isRemote()){		// receiver updates, so send an event to the sharer
 					endpointToSharePeer.emit(boardPathUpdate, shareBoardData);
 				}else{	// sharer updates
@@ -616,8 +594,6 @@ public class WhiteboardApp {
 			} else {
 				// was accepted locally, so do remote stuff if needed
 				String shareBoardData = selectedBoard.toString();
-				log.info(ANSI_CYAN + (selectedBoard.isRemote() ? "remote" : "local") + ANSI_RESET);
-
 				if(selectedBoard.isRemote()){
 					endpointToSharePeer.emit(boardClearUpdate, shareBoardData);
 				}else{
@@ -648,7 +624,6 @@ public class WhiteboardApp {
 				drawSelectedWhiteboard();
 			} else {
 				String shareBoardData = selectedBoard.toString();
-				log.info(ANSI_CYAN + (selectedBoard.isRemote() ? "remote" : "local") + ANSI_RESET);
 				if(selectedBoard.isRemote()){
 					endpointToSharePeer.emit(boardUndoUpdate, shareBoardData);
 				}else{
@@ -685,13 +660,11 @@ public class WhiteboardApp {
 
 			try {
 				log.info("try to connect");
-				log.info(ANSI_GREEN + boardID + ANSI_RESET);
 				// the client manager that the receiver uses to connect to the server
 				ClientManager clientMangr = peerManager.connect(peerServerPort, peerIP);
 				clientMangr
 						.on(PeerManager.peerStarted, (args)->{
 							endpointToSharePeer = (Endpoint)args[0];
-							log.info(ANSI_YELLOW + "the endpoint id of the sharing cohort " + endpointToSharePeer.getOtherEndpointId() + ANSI_RESET);
 							endpointToSharePeer
 									.on(boardData, (args1)->{
 										String boardDataToRender = (String)args1[0];
@@ -726,7 +699,6 @@ public class WhiteboardApp {
 						.on(PeerManager.peerStopped, (args)->{
 							Endpoint endpoint = (Endpoint)args[0];
 							clientMangr.endpointClosed(endpoint);
-							log.info(ANSI_YELLOW + "peer has terminated :" + endpoint.getOtherEndpointId() +ANSI_RESET);
 						});
 				clientMangr.start();
 			} catch (UnknownHostException e) {
@@ -743,7 +715,6 @@ public class WhiteboardApp {
 	 */
 	public void setShare(boolean share) {
 		if(selectedBoard!=null) {
-			log.info(ANSI_GREEN + "I would like to share this board to others!" + ANSI_RESET);
         	selectedBoard.setShared(share);
         	String targetBoard = selectedBoard.getName();
 
@@ -763,7 +734,6 @@ public class WhiteboardApp {
 	 */
 	public void guiShutdown() {
 		// do some final cleanup
-		log.info(ANSI_CYAN + " number of sharing board: " + boardListeningLists.size() + ANSI_RESET);
 		for(var whiteboard : whiteboards.values()){
 			if (whiteboard.isShared()) {
 				endpointToWhiteboardServer.emit(WhiteboardServer.unshareBoard, whiteboard.getName());

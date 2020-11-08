@@ -229,45 +229,35 @@ public class WhiteboardServer {
 				})
 				.on(ServerManager.sessionStarted, (arg)->{
 					Endpoint endpoint = (Endpoint)arg[0];
-					log.info(ANSI_GREEN + "Client session started: " + endpoint.getOtherEndpointId() + ANSI_RESET);
 					clients.put(endpoint.getOtherEndpointId(), endpoint);
-					displayClientAlive();
 
 					sendSharingPeer(endpoint);
 
 					endpoint
 							.on(shareBoard,(Args)->{
 								String sharedBoard = (String)Args[0];
-								log.info(ANSI_BLUE +"Received share request " + sharedBoard + ANSI_RESET);
 								String eventRaiser = endpoint.getOtherEndpointId();
 
 								addShareBoard(eventRaiser, sharedBoard);
-								displaySharedBoards();
 								broadcast(new ArrayList<>(clients.keySet()), clients, eventRaiser, sharingBoard, sharedBoard);
 							})
 							.on(unshareBoard, (Args)->{
 								String unSharedBoard = (String)Args[0];
-								log.info(ANSI_RED + "board not share " + unSharedBoard + ANSI_RESET);
 								String eventRaiser = endpoint.getOtherEndpointId();
 								removeShareBoard(eventRaiser, unSharedBoard);
-								displaySharedBoards();
 								broadcast(new ArrayList<>(clients.keySet()), clients, eventRaiser, unsharingBoard, unSharedBoard);
 							});
 				})
 				.on(ServerManager.sessionStopped, (arg)->{
 					Endpoint endpoint = (Endpoint)arg[0];
 
-					log.severe(ANSI_RED + "Client session ended: " + endpoint.getOtherEndpointId() + ANSI_RESET);
 					clients.remove(endpoint.getOtherEndpointId());
 					sharingBoards.remove(endpoint.getOtherEndpointId());
-					displayClientAlive();
 				})
 				.on(ServerManager.sessionError,(arg)->{
 					Endpoint endpoint = (Endpoint)arg[0];
-					log.severe(ANSI_YELLOW + "client " + endpoint.getOtherEndpointId() + " stopped" + ANSI_RESET);
 					sharingBoards.remove(endpoint.getOtherEndpointId());
 					clients.remove(endpoint.getOtherEndpointId());
-					displayClientAlive();
 				});
         
         // start up the server
