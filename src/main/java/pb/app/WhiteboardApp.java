@@ -765,8 +765,9 @@ public class WhiteboardApp {
 		// do some final cleanup
 		log.info(ANSI_CYAN + " number of sharing board: " + boardListeningLists.size() + ANSI_RESET);
 		for(var whiteboard : whiteboards.values()){
-			endpointToWhiteboardServer.emit(WhiteboardServer.unshareBoard, whiteboard.getName());
-
+			if (whiteboard.isShared()) {
+				endpointToWhiteboardServer.emit(WhiteboardServer.unshareBoard, whiteboard.getName());
+			}
 			sessions.values().forEach(endpt->{
 				if(whiteboard.isShared()) {
 					endpt.emit(unlistenBoard, whiteboard.getName());
